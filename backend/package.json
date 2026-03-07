@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "prestart": "node scripts/flush-redis-cache.js",
+    "start": "node index.js",
+    "test": "node --test tests/**/*.test.js",
+    "sanity": "node scripts/sanity.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.0.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.12",
+    "redis": "^5.10.0"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.0.0"
+  }
+}

@@ -1,0 +1,444 @@
+ "use client";
+
+import { useMemo, useState } from "react";
+import styles from "./page.module.css";
+
+type Listing = {
+  id: number;
+  order: number;
+  title: string;
+  price: number;
+  address: string;
+  city: string;
+  beds: number;
+  baths: number;
+  sqft: number;
+  status: "available" | "inventory" | "comingSoon";
+  tag?: string;
+  builder: string;
+  saved?: boolean;
+};
+
+const listings: Listing[] = [
+  {
+    id: 1,
+    order: 1,
+    title: "Sagewood at Leep",
+    price: 624900,
+    address: "123 Willow Bend, Austin, TX",
+    city: "Austin, TX",
+    beds: 4,
+    baths: 3,
+    sqft: 2480,
+    status: "available",
+    tag: "New",
+    builder: "Greenline Builders",
+    saved: true,
+  },
+  {
+    id: 2,
+    order: 2,
+    title: "Claystone Modern",
+    price: 712400,
+    address: "455 Juniper Trail, Austin, TX",
+    city: "Austin, TX",
+    beds: 5,
+    baths: 4,
+    sqft: 3010,
+    status: "inventory",
+    tag: "Move-in ready",
+    builder: "Juniper Homes",
+  },
+  {
+    id: 3,
+    order: 3,
+    title: "Sandridge Court",
+    price: 549100,
+    address: "19 Sandstone Ct, Austin, TX",
+    city: "Austin, TX",
+    beds: 3,
+    baths: 2,
+    sqft: 1890,
+    status: "comingSoon",
+    builder: "Mesa Living",
+  },
+  {
+    id: 4,
+    order: 4,
+    title: "Oakline Haven",
+    price: 658000,
+    address: "812 Oakline Dr, Austin, TX",
+    city: "Austin, TX",
+    beds: 4,
+    baths: 3,
+    sqft: 2340,
+    status: "available",
+    builder: "Oak & Root Builders",
+  },
+];
+
+type SortKey = "default" | "price-asc" | "price-desc" | "sqft-asc" | "sqft-desc";
+type MoveIn = "all" | "ready" | "1-2" | "3-6";
+type FilterKey = "price" | "beds" | "baths" | "movein" | null;
+
+const priceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+const PRICE_MIN = 300000;
+const PRICE_MAX = 1500000;
+const PRICE_RANGE = PRICE_MAX - PRICE_MIN;
+
+export default function Home() {
+  const [sortKey, setSortKey] = useState<SortKey>("default");
+  const [priceMin, setPriceMin] = useState(400000);
+  const [priceMax, setPriceMax] = useState(900000);
+  const [beds, setBeds] = useState("Any");
+  const [baths, setBaths] = useState("Any");
+  const [moveIn, setMoveIn] = useState<MoveIn>("all");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [openFilter, setOpenFilter] = useState<FilterKey>(null);
+
+  const sortedListings = useMemo(() => {
+    const list = [...listings];
+    switch (sortKey) {
+      case "price-asc":
+        return list.sort((a, b) => a.price - b.price);
+      case "price-desc":
+        return list.sort((a, b) => b.price - a.price);
+      case "sqft-asc":
+        return list.sort((a, b) => a.sqft - b.sqft);
+      case "sqft-desc":
+        return list.sort((a, b) => b.sqft - a.sqft);
+      case "default":
+      default:
+        return list.sort((a, b) => a.order - b.order);
+    }
+  }, [sortKey]);
+
+  const priceTrackStyle = useMemo(() => {
+    const minPct = ((priceMin - PRICE_MIN) / PRICE_RANGE) * 100;
+    const maxPct = ((priceMax - PRICE_MIN) / PRICE_RANGE) * 100;
+    return {
+      background: `linear-gradient(90deg, #e2ddd5 ${minPct}%, var(--rootz-green-soft) ${minPct}%, var(--rootz-green-soft) ${maxPct}%, #e2ddd5 ${maxPct}%)`,
+    };
+  }, [priceMin, priceMax]);
+
+  return (
+    <div className={styles.page}>
+      <nav className={styles.nav}>
+        <div className={styles.brand}>
+          <div className={styles.logoWordmark}>BuildRootz</div>
+          <span className={styles.logoSub}>Homes by LeepUP</span>
+        </div>
+        <div className={styles.navLinks}>
+          <a className={styles.navLinkDesktop} href="#about">
+            About
+          </a>
+          <a className={styles.navLinkDesktop} href="#resources">
+            Resources
+          </a>
+          <div className={styles.navActions}>
+            <button className={`${styles.ghost} ${styles.navLinkDesktop}`}>
+              Log in
+            </button>
+            <button className={`${styles.primary} ${styles.navLinkDesktop}`}>
+              Sign up
+            </button>
+            <a className={styles.navLinkMobile} href="#browse">
+              Browse
+            </a>
+            <a className={styles.navLinkMobile} href="#map">
+              Map
+            </a>
+            <a className={styles.navLinkMobile} href="#saved">
+              Saved
+            </a>
+            <a className={styles.navLinkMobile} href="#account">
+              Account
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <div className={styles.content}>
+        <header className={styles.header}>
+          <div>
+            <p className={styles.kicker}>LeepUP listings</p>
+            <h1 className={styles.heroTitle}>
+              Find new homes from builders, mapped in real time.
+            </h1>
+            <p className={styles.subhead}>
+              Explore inventory, coming soon releases, and featured homes across
+              your market. The map and the list stay in sync—tap a pin or card
+              to see more detail.
+            </p>
+          </div>
+          <div className={styles.headerActions}>
+            <button className={styles.primary}>Get alerts</button>
+            <button className={styles.secondary}>Save search</button>
+          </div>
+        </header>
+
+        <section className={styles.shell}>
+          <div className={styles.toolbar}>
+            <div className={styles.toolbarLeft}>
+              <span className={styles.dotAvailable} />
+              <span>Available</span>
+              <span className={styles.dotInventory} />
+              <span>Inventory</span>
+              <span className={styles.dotComing} />
+              <span>Coming soon</span>
+            </div>
+            <div className={styles.toolbarRight}>
+              <div className={styles.filters}>
+                <div className={styles.priceGroup}>
+                  <span className={styles.filterLabel}>Price</span>
+                  <div className={styles.rangeInputs}>
+                    <label className={styles.rangeLabel}>
+                      <span className={styles.rangeText}>Min</span>
+                      <input
+                        type="range"
+                        min={300000}
+                        max={1500000}
+                        step={10000}
+                        value={priceMin}
+                        onChange={(e) =>
+                          setPriceMin(Math.min(Number(e.target.value), priceMax))
+                        }
+                      />
+                      <span className={styles.rangeValue}>
+                        {priceFormatter.format(priceMin)}
+                      </span>
+                    </label>
+                    <label className={styles.rangeLabel}>
+                      <span className={styles.rangeText}>Max</span>
+                      <input
+                        type="range"
+                        min={300000}
+                        max={1500000}
+                        step={10000}
+                        value={priceMax}
+                        onChange={(e) =>
+                          setPriceMax(Math.max(Number(e.target.value), priceMin))
+                        }
+                      />
+                      <span className={styles.rangeValue}>
+                        {priceFormatter.format(priceMax)}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.pillGroup}>
+                  <span className={styles.filterLabel}>Beds</span>
+                  <div className={styles.pills}>
+                    {["Any", "1+", "2+", "3+", "4+", "5+"].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        className={`${styles.pillBtn} ${
+                          beds === val ? styles.pillActive : ""
+                        }`}
+                        onClick={() => setBeds(val)}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.pillGroup}>
+                  <span className={styles.filterLabel}>Baths</span>
+                  <div className={styles.pills}>
+                    {["Any", "1+", "2+", "3+", "4+", "5+"].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        className={`${styles.pillBtn} ${
+                          baths === val ? styles.pillActive : ""
+                        }`}
+                        onClick={() => setBaths(val)}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.moveIn}>
+                  <span className={styles.filterLabel}>Move-in</span>
+                  <select
+                    className={styles.sortSelect}
+                    value={moveIn}
+                    onChange={(e) => setMoveIn(e.target.value as MoveIn)}
+                  >
+                    <option value="all">All</option>
+                    <option value="ready">Ready to Move In</option>
+                    <option value="1-2">1-2 Months</option>
+                    <option value="3-6">3-6 Months</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  className={styles.ghost}
+                  onClick={() => setMoreOpen(true)}
+                >
+                  More
+                </button>
+              </div>
+              <label className={styles.sortLabel}>
+                <span className={styles.visuallyHidden}>Sort by</span>
+                <select
+                  className={styles.sortSelect}
+                  value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+              >
+                <option value="default">Default</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="sqft-asc">Sqft: Low to High</option>
+                <option value="sqft-desc">Sqft: High to Low</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className={styles.split}>
+              <div className={styles.mapPanel}>
+                <div className={styles.mapHeader}>
+                  <div className={styles.searchBox}>
+                    <label
+                      className={styles.visuallyHidden}
+                      htmlFor="search-area"
+                    >
+                      Search area
+                    </label>
+                    <input
+                      id="search-area"
+                      type="search"
+                    className={styles.searchInput}
+                    placeholder="Search city, neighborhood, or zip"
+                  />
+                  <button type="button" className={styles.searchButton}>
+                    Search
+                  </button>
+                </div>
+                <button className={styles.ghost}>Change area</button>
+              </div>
+              <div className={styles.mapCanvas}>
+                <div className={`${styles.marker} map-bubble`} style={{ top: "22%", left: "28%" }}>
+                  <span className={styles.markerPulse} />
+                </div>
+                <div className={`${styles.marker} map-bubble ${styles.markerInventory}`} style={{ top: "48%", left: "60%" }}>
+                  <span className={styles.markerDot} />
+                </div>
+                <div className={`${styles.marker} map-bubble ${styles.markerComingSoon}`} style={{ top: "68%", left: "40%" }}>
+                  <span className={styles.markerDot} />
+                </div>
+                <div className={styles.mapRing} />
+              </div>
+            </div>
+
+            <div className={styles.listPanel}>
+              <div className={styles.listHeader}>
+                <div>
+                  <p className={styles.listLabel}>Showing results near the map</p>
+                  <strong>{listings.length} homes</strong>
+                </div>
+                <div className={styles.pills}>
+                  <span className={styles.pill}>Single family</span>
+                  <span className={styles.pill}>3-5 beds</span>
+                  <span className={styles.pill}>Under $750k</span>
+                </div>
+              </div>
+
+              <div className={styles.cards}>
+                {sortedListings.map((home) => (
+                  <article key={home.id} className={styles.card}>
+                    <div className={styles.cardMedia}>
+                      <div className={styles.mediaOverlay}>
+                        <span className={styles.photoLabel}>Front exterior</span>
+                        <button
+                          type="button"
+                          aria-label={home.saved ? "Unsave home" : "Save home"}
+                          aria-pressed={home.saved}
+                          className={`${styles.saveBtn} ${home.saved ? styles.isSaved : ""}`}
+                        >
+                          <svg
+                            className={`${styles.saveIcon} brx-save-icon`}
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              className={`${styles.saveCircle} brx-save-circle`}
+                              cx="12"
+                              cy="12"
+                              r="9"
+                            />
+                            <path
+                              className={`${styles.saveRoots} brx-save-roots`}
+                              d="M12 14.5c-.6.9-1.3 1.7-2.2 2.2M12 14.5c.6.7 1.3 1.4 2.2 1.8M12 14.5c0 1-.2 2-.4 3M12 14.5c.3.8.5 1.5.8 2.3"
+                              fill="none"
+                            />
+                            <path
+                              className={`${styles.saveSprout} brx-save-stroke`}
+                              d="M12 14.5V10.8m0 0c.4-1.3 1.1-2.6 2.8-3m-2.8 3c-.5-1.2-1.3-2.3-2.8-2.6"
+                              fill="none"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className={styles.badgeRow}>
+                      <span className={`${styles.status} ${styles[`status_${home.status}`]}`}>
+                        {home.status === "available" && "Available"}
+                        {home.status === "inventory" && "Inventory"}
+                        {home.status === "comingSoon" && "Coming soon"}
+                      </span>
+                      {home.tag && <span className={styles.tag}>{home.tag}</span>}
+                    </div>
+                    <div className={styles.cardBody}>
+                      <p className={styles.community}>{home.title}</p>
+                      <p className={styles.price}>{priceFormatter.format(home.price)}</p>
+                      <p className={styles.meta}>
+                        {home.beds} bd · {home.baths} ba · {home.sqft.toLocaleString()} sqft
+                      </p>
+                      <p className={styles.city}>{home.city}</p>
+                      <p className={styles.builder}>{home.builder}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {moreOpen && (
+        <div className={styles.moreOverlay} role="dialog" aria-modal="true">
+          <div className={styles.morePanel}>
+            <div className={styles.moreHeader}>
+              <h2>More filters</h2>
+              <button
+                type="button"
+                className={styles.ghost}
+                onClick={() => setMoreOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <p className={styles.subtle}>
+              Additional filters coming soon. Choose your options and save
+              preferences later.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
