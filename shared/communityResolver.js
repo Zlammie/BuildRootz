@@ -13,6 +13,9 @@ const {
 const {
   normalizePromo,
 } = require("./promo");
+const {
+  normalizePublicSlug,
+} = require("./publicSlug");
 
 let ObjectId;
 (() => {
@@ -203,7 +206,7 @@ async function resolveOrCreatePublicCommunity(db, input = {}, options = {}) {
 
   const publicCommunityId = parseCommunityObjectId(input.publicCommunityId || input._id);
   const keepupCommunityId = input.keepupCommunityId ? String(input.keepupCommunityId).trim() : null;
-  const slug = input.slug ? String(input.slug).trim().toLowerCase() : null;
+  const slug = input.slug ? normalizePublicSlug(input.slug) : null;
   const canonicalKey =
     (typeof input.canonicalKey === "string" && input.canonicalKey) ||
     computeCanonicalKey(input);

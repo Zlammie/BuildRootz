@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
 const router = require("../routes/internalPublish.routes");
+const BuilderProfile = require("../models/BuilderProfile");
 const BuilderInCommunity = require("../models/BuilderInCommunity");
 const PlanCatalog = require("../models/PlanCatalog");
 const CommunityPlanOffering = require("../models/CommunityPlanOffering");
@@ -162,6 +163,81 @@ test("planCatalog upserts by companyId + keepupFloorPlanId and keeps patch seman
     originalFilename: "the-briar.pdf",
     mimeType: "application/pdf",
   });
+});
+
+test("publish bundle normalizes builder, community, and plan slugs", async () => {
+  const companyId = oid().toHexString();
+  const publicCommunityId = oid().toHexString();
+
+  const response = await postBundle({
+    meta: { keepupCompanyId: companyId, requestedAt: nowIso(), publisherVersion: "keepup-test" },
+    builderProfile: {
+      companyId,
+      builderName: "Acme Homes",
+      builderSlug: "  ACME__Homes -- TX  ",
+    },
+    communities: [
+      {
+        publicCommunityId,
+        name: "River Walk North",
+        city: "Celina",
+        state: "TX",
+        slug: "  River__Walk --- North  ",
+      },
+    ],
+    builderInCommunities: [
+      {
+        companyId,
+        publicCommunityId,
+        builder: {
+          name: "Acme Homes",
+          slug: "  Acme // Homes  ",
+        },
+      },
+    ],
+    planCatalog: [
+      {
+        companyId,
+        keepupFloorPlanId: "fp-slug-a",
+        name: "Cypress Plan",
+        slug: "  Cypress__Plan ++  ",
+      },
+      {
+        companyId,
+        keepupFloorPlanId: "fp-slug-b",
+        name: "  Maple   Grove   ",
+      },
+    ],
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.ok, true);
+
+  const builderProfile = await BuilderProfile.findOne({ companyId }).lean();
+  assert.ok(builderProfile);
+  assert.equal(builderProfile.builderSlug, "acme-homes-tx");
+
+  const bic = await BuilderInCommunity.findOne({ companyId, publicCommunityId }).lean();
+  assert.ok(bic);
+  assert.equal(bic.builder?.slug, "acme-homes");
+
+  const community = await findPublicCommunity(publicCommunityId);
+  assert.ok(community);
+  assert.equal(community.slug, "river-walk-north");
+
+  const explicitPlan = await PlanCatalog.findOne({
+    companyId,
+    keepupFloorPlanId: "fp-slug-a",
+  }).lean();
+  assert.ok(explicitPlan);
+  assert.equal(explicitPlan.slug, "cypress-plan");
+
+  const fallbackPlan = await PlanCatalog.findOne({
+    companyId,
+    keepupFloorPlanId: "fp-slug-b",
+  }).lean();
+  assert.ok(fallbackPlan);
+  assert.equal(fallbackPlan.slug, "maple-grove");
 });
 
 test("communities payload upserts overview and media onto PublicCommunity without clearing omitted fields", async () => {

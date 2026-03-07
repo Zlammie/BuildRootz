@@ -8,6 +8,7 @@ const {
   computeCanonicalKey,
 } = require("../../utils/communityResolver");
 const { hasCommunityDetailsInput, normalizeCommunityDetails } = require("../../../shared/communityDetails");
+const { normalizePublicSlug } = require("../../../shared/publicSlug");
 
 const router = express.Router();
 
@@ -23,15 +24,6 @@ function normalizeName(s = "") {
 
 function escapeRegex(input = "") {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function slugify(value = "") {
-  return value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
 }
 
 function extractAliasLabels(rawAliases) {
@@ -117,13 +109,13 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const desiredSlug = slugify(slug || normName);
+    const desiredSlug = normalizePublicSlug(slug || normName);
     let finalSlug = desiredSlug;
     if (finalSlug) {
       let suffix = 1;
       // ensure slug uniqueness without race safety (best effort)
       while (await col.findOne({ slug: finalSlug })) {
-        finalSlug = `${desiredSlug}-${suffix}`;
+        finalSlug = normalizePublicSlug(`${desiredSlug}-${suffix}`);
         suffix += 1;
       }
     }

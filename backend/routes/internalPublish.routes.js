@@ -24,6 +24,9 @@ const {
 const {
   normalizePromo,
 } = require("../../shared/promo");
+const {
+  normalizePublicSlug,
+} = require("../../shared/publicSlug");
 
 const router = express.Router();
 
@@ -48,15 +51,6 @@ function parseObjectId(value) {
   const normalized = value.trim();
   if (!mongoose.Types.ObjectId.isValid(normalized)) return null;
   return new mongoose.Types.ObjectId(normalized);
-}
-
-function slugify(value = "") {
-  return value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
 }
 
 function toNumber(value) {
@@ -404,10 +398,14 @@ function sanitizeBuilderProfile(rawProfile, errors) {
     errors.push("builderProfile.companyId must be a valid ObjectId");
     return null;
   }
+  const patch = sanitizeBySpec(rawProfile, BUILDER_PROFILE_SPEC, errors, "builderProfile");
+  if (hasOwn(patch, "builderSlug") && patch.builderSlug !== null) {
+    patch.builderSlug = normalizePublicSlug(patch.builderSlug);
+  }
   return {
     companyId,
     companyIdString: companyId.toString(),
-    patch: sanitizeBySpec(rawProfile, BUILDER_PROFILE_SPEC, errors, "builderProfile"),
+    patch,
   };
 }
 
@@ -427,6 +425,9 @@ function sanitizeBuilderInCommunity(rawEntry, index, errors) {
     return null;
   }
   const patch = sanitizeBySpec(rawEntry, BUILDER_IN_COMMUNITY_SPEC, errors, `builderInCommunities[${index}]`);
+  if (patch.builder && hasOwn(patch.builder, "slug") && patch.builder.slug !== null) {
+    patch.builder.slug = normalizePublicSlug(patch.builder.slug);
+  }
   if (patch.webData?.contactVisibility && !hasOwn(patch.webData.contactVisibility, "showEmail")) {
     patch.webData.contactVisibility.showEmail = false;
   }
@@ -485,6 +486,9 @@ function sanitizePublicCommunity(rawEntry, index, errors) {
     return null;
   }
   const patch = sanitizeBySpec(rawEntry, PUBLIC_COMMUNITY_SPEC, errors, `communities[${index}]`);
+  if (hasOwn(patch, "slug") && patch.slug !== null) {
+    patch.slug = normalizePublicSlug(patch.slug);
+  }
   if (hasOwn(patch, "highlights") && patch.highlights === null) {
     patch.highlights = [];
   }
@@ -518,6 +522,9 @@ function sanitizePlanCatalog(rawEntry, index, errors) {
     return null;
   }
   const patch = sanitizeBySpec(rawEntry, PLAN_CATALOG_SPEC, errors, `planCatalog[${index}]`);
+  if (hasOwn(patch, "slug") && patch.slug !== null) {
+    patch.slug = normalizePublicSlug(patch.slug);
+  }
   if (hasOwn(patch, "name") && !patch.name) {
     errors.push(`planCatalog[${index}].name cannot be empty`);
   }
@@ -1311,7 +1318,7 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
       const setDoc = buildSetDoc(entry.patch);
       if (!hasOwn(entry.patch, "slug")) {
         const nameForSlug = (hasOwn(entry.patch, "name") && entry.patch.name) || existing?.name || "";
-        const slug = slugify(nameForSlug);
+        const slug = normalizePublicSlug(nameForSlug);
         if (slug) setDoc.slug = slug;
       }
       if (!hasOwn(entry.patch, "name") && !existing?.name) {

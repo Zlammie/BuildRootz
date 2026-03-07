@@ -105,6 +105,7 @@ npm start
 - KeepUp internal publish endpoint: `POST /internal/publish/keepup/bundle`.
 - `BRZ_INTERNAL_API_KEY` is required and must be sent as `Authorization: Bearer <token>`.
 - Canonical community key is `publicCommunityId` (`String(PublicCommunity._id)`); legacy `communityId` is KeepUp/external mapping only.
+- Public slug writes are normalized through `shared/publicSlug.normalizePublicSlug` in publish/upsert flows (`internalPublish`, `shared/communityResolver`, and `internal community create`).
 - Builder and community profile pages are snapshot-first and read from KeepUP public endpoint:
   - `GET {KEEPUP_PUBLIC_BASE_URL}/public/brz/builders/:builderSlug`
 - Mongo public collections (`PublicHome` / `PublicCommunity`) are legacy fallback only when `BRZ_FALLBACK_TO_MONGO_PUBLIC=1`.
