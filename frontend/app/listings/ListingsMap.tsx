@@ -524,6 +524,7 @@ export default function ListingsMap({
       };
       source.getClusterExpansionZoom(clusterId, (error, zoom) => {
         if (error) return;
+        if (typeof zoom !== "number" || !Number.isFinite(zoom)) return;
         const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
         map.easeTo({ center: coordinates, zoom });
       });
@@ -544,6 +545,7 @@ export default function ListingsMap({
       };
       source.getClusterExpansionZoom(clusterId, (error, zoom) => {
         if (error) return;
+        if (typeof zoom !== "number" || !Number.isFinite(zoom)) return;
         const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
         map.easeTo({ center: coordinates, zoom });
       });
@@ -648,9 +650,12 @@ export default function ListingsMap({
     const map = mapRef.current;
     if (!map) return;
 
-    const handleMoveEnd = (event: mapboxgl.MapboxEvent<unknown>) => {
-      const nextBounds = toMapBounds(map.getBounds());
-      const source: BoundsChangeSource = event.originalEvent ? "user" : "programmatic";
+    const handleMoveEnd = (event: mapboxgl.MapboxEvent) => {
+      const mapBounds = map.getBounds();
+      if (!mapBounds) return;
+      const nextBounds = toMapBounds(mapBounds);
+      const source: BoundsChangeSource =
+        "originalEvent" in event && event.originalEvent ? "user" : "programmatic";
       onViewportBoundsChange(nextBounds, source);
     };
 
@@ -667,7 +672,9 @@ export default function ListingsMap({
     if (appliedBounds && appliedBoundsKey !== lastAppliedBoundsKeyRef.current) {
       lastAppliedBoundsKeyRef.current = appliedBoundsKey;
       initialResultsFitDoneRef.current = true;
-      const currentBounds = toMapBounds(map.getBounds());
+      const mapBounds = map.getBounds();
+      if (!mapBounds) return;
+      const currentBounds = toMapBounds(mapBounds);
       if (!areBoundsClose(currentBounds, appliedBounds)) {
         map.fitBounds(toMapboxBounds(appliedBounds), { padding: 52, maxZoom: 13, duration: 500 });
       }

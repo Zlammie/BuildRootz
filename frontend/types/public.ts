@@ -55,6 +55,7 @@ export type PublicFloorPlan = {
   beds?: number | null;
   baths?: number | null;
   sqft?: number | null;
+  lotSize?: string | null;
   garage?: number | null;
   basePriceFrom?: number | null;
   basePriceAsOf?: string | null;
@@ -77,6 +78,7 @@ export type PublicHome = {
   beds?: number | null;
   baths?: number | null;
   sqft?: number | null;
+  lotSize?: string | null;
   garage?: number | null;
   lat?: number | null;
   lng?: number | null;

@@ -40,11 +40,9 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
-function isValidCoordinate(lat: number | null, lng: number | null): lat is number {
+function isValidCoordinate(lat: number, lng: number): boolean {
   return (
-    typeof lat === "number" &&
     Number.isFinite(lat) &&
-    typeof lng === "number" &&
     Number.isFinite(lng) &&
     lat >= -90 &&
     lat <= 90 &&
@@ -242,6 +240,7 @@ export async function GET() {
       const coordinates = (doc.coordinates as { lat?: unknown; lng?: unknown } | undefined) || {};
       const lat = toNumber(location.lat) ?? toNumber(coordinates.lat) ?? toNumber(doc.lat);
       const lng = toNumber(location.lng) ?? toNumber(coordinates.lng) ?? toNumber(doc.lng);
+      if (lat == null || lng == null) return;
       if (!isValidCoordinate(lat, lng)) return;
 
       const communityId = id.toLowerCase();

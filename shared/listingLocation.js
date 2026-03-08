@@ -3,6 +3,15 @@ function cleanText(value) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * @typedef {Object} ListingLocationLineInput
+ * @property {string=} city
+ * @property {string=} state
+ * @property {string=} postalCode
+ * @property {string=} formattedAddress
+ * @property {string=} fallbackLabel
+ */
+
 function parseLocationFromFormattedAddress(formattedAddress) {
   const normalized = cleanText(formattedAddress);
   if (!normalized) return "";
@@ -21,13 +30,16 @@ function parseLocationFromFormattedAddress(formattedAddress) {
   return normalized;
 }
 
+/**
+ * @param {ListingLocationLineInput=} input
+ */
 function buildListingLocationLine({
   city,
   state,
   postalCode,
   formattedAddress,
   fallbackLabel = "Location coming soon",
-} = {}) {
+} = /** @type {ListingLocationLineInput} */ ({})) {
   const cleanCity = cleanText(city);
   const cleanState = cleanText(state);
   const cleanPostalCode = cleanText(postalCode);
