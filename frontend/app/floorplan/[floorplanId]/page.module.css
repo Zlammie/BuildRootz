@@ -1,0 +1,357 @@
+.page {
+  min-height: 100vh;
+  background: var(--page-bg);
+  padding: 0 0 72px;
+}
+
+.pageShell {
+  max-width: 1760px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 32px 24px 72px;
+}
+
+.layout {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.kicker {
+  margin: 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.title {
+  margin: 6px 0 0;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  max-width: 780px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.queueAction,
+.saveAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--rootz-green-soft);
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.queueAction:hover:not(:disabled),
+.saveAction:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #cfbda6;
+}
+
+.queueActionActive,
+.saveActionActive,
+.saveActionSaved {
+  background: #f6e7d8;
+  border-color: var(--rootz-brown);
+  color: var(--rootz-brown);
+}
+
+.queueAction:disabled,
+.saveAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  min-height: 340px;
+}
+
+.heroImageWrap {
+  background: linear-gradient(140deg, #d8d1c3, #cabba7);
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+}
+
+.heroFallback {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.floorPlanPreview {
+  padding: 18px 18px 64px;
+  border-left: 1px solid var(--border);
+  background: repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.04),
+      rgba(0, 0, 0, 0.04) 12px,
+      rgba(0, 0, 0, 0.02) 12px,
+      rgba(0, 0, 0, 0.02) 24px
+    ),
+    #f9f7f2;
+  position: relative;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+}
+
+.floorPlanImage,
+.floorPlanFallback {
+  width: min(100%, 360px);
+  min-height: 240px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.floorPlanImage {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.saveText {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.saveIcon {
+  width: 18px;
+  height: 18px;
+}
+
+.saveCircle,
+.saveRoots,
+.saveSprout {
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: transparent;
+  transition: stroke 0.15s ease, fill 0.15s ease;
+}
+
+.saveAction:hover .saveCircle {
+  fill: #f4f0e8;
+}
+
+.saveActionSaved .saveCircle {
+  fill: #f6e7d8;
+  stroke: var(--rootz-brown);
+}
+
+.saveActionSaved .saveRoots,
+.saveActionSaved .saveSprout {
+  stroke: var(--rootz-brown);
+}
+
+.floorPlanFallback {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.floorPlanLink {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.floorPlanLink:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.metaBar {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: #f9f7f2;
+}
+
+.summaryText {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+}
+
+.panelHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 22px;
+}
+
+.panelHint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.communityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.communityCard,
+.communityCardLink {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  display: grid;
+  text-decoration: none;
+  color: inherit;
+}
+
+.communityCardLink:hover {
+  transform: translateY(-1px);
+}
+
+.communityMedia {
+  width: 100%;
+  min-height: 128px;
+  background: linear-gradient(140deg, #dfd8ca, #ccbda9);
+  background-size: cover;
+  background-position: center;
+}
+
+.communityBody {
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.communityName {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--rootz-brown);
+}
+
+.communityMeta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.communityStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.communityBadge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: #f9f7f2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.emptyState {
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .pageShell {
+    grid-template-columns: 1fr;
+    padding: 24px 16px 72px;
+  }
+
+  .heroGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroImageWrap {
+    min-height: 240px;
+  }
+
+  .floorPlanPreview {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding-bottom: 64px;
+  }
+
+  .heroFallback {
+    min-height: 240px;
+  }
+}

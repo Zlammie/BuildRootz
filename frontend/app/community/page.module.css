@@ -1,0 +1,471 @@
+.page {
+  min-height: 100vh;
+  background: var(--page-bg);
+  padding: 0 0 72px;
+}
+
+.pageShell {
+  max-width: 1760px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 32px 24px 72px;
+}
+
+.layout {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 34px);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.modelAddress {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pill {
+  padding: 6px 10px;
+  background: #f6f1ea;
+  color: var(--rootz-brown);
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--rootz-green-soft);
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+.saveButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.saveButtonSaved {
+  background: #f6e7d8;
+  border-color: var(--rootz-brown);
+  color: var(--rootz-brown);
+}
+
+.saveIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.saveCircle,
+.saveRoots,
+.saveSprout {
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: transparent;
+  transition: stroke 0.15s ease, fill 0.15s ease;
+}
+
+.saveButton:hover .saveCircle {
+  fill: #f4f0e8;
+}
+
+.saveButtonSaved .saveCircle {
+  fill: #f6e7d8;
+  stroke: var(--rootz-brown);
+}
+
+.saveButtonSaved .saveRoots,
+.saveButtonSaved .saveSprout {
+  stroke: var(--rootz-brown);
+}
+
+.queueButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+}
+
+.queueButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+.queueButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.queueButtonActive {
+  background: #f6e7d8;
+  border-color: var(--rootz-brown);
+  color: var(--rootz-brown);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.panel h3 {
+  margin: 0 0 10px;
+}
+
+.panel p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+
+.builderList {
+  display: grid;
+  gap: 10px;
+}
+
+.builderTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.builderTable th,
+.builderTable td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.builderTable th {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.builderCard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+}
+
+.builderName {
+  font-weight: 700;
+}
+
+.builderMeta {
+  color: var(--muted);
+}
+
+.builderSections {
+  display: grid;
+  gap: 14px;
+}
+
+.builderSection {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+
+.builderSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.builderIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.builderLogo {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  object-fit: contain;
+  background: #fff;
+}
+
+.builderLogoFallback {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: #f7f3ea;
+}
+
+.builderListingCount {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  background: #f7f3ea;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.builderSectionMeta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.viewListingsLink {
+  display: inline-block;
+  margin-top: 2px;
+  color: var(--rootz-brown);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.viewListingsLink:hover {
+  color: var(--primary);
+}
+
+.builderPromotion {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.builderPlans {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: #fdfbf6;
+}
+
+.builderPlansTitle {
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.planTable {
+  display: grid;
+  gap: 6px;
+}
+
+.planTableHead,
+.planTableRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1fr) 120px;
+  gap: 10px;
+  align-items: center;
+}
+
+.planTableHead {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.planTableRow {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  font-size: 14px;
+}
+
+.viewPlanListingsLink {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--rootz-brown);
+  text-decoration: underline;
+}
+
+.viewPlanListingsLink:hover {
+  color: var(--primary);
+}
+
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--rootz-green-soft);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.amenities {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.amenity {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f9f7f2;
+}
+
+.mapBox {
+  height: 260px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e0d8cc, #c7b6a3);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.mapBox::after {
+  content: "Community map placeholder";
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.modelList {
+  display: grid;
+  gap: 10px;
+}
+
+.modelCard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+}
+
+.modelTitle {
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.modelAddress {
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.modelLink {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.modelLink:hover {
+  text-decoration: underline;
+}
+
+.rowGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fdfbf6;
+}
+
+.statLabel {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.statValue {
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .pageShell {
+    grid-template-columns: 1fr;
+    padding: 32px 24px 72px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

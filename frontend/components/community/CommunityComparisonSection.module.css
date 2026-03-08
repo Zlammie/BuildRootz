@@ -1,0 +1,265 @@
+.section {
+  display: grid;
+  gap: 12px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header {
+  margin: 0;
+  font-size: 24px;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 6px;
+  background: #f1ebdf;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.tabBtn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #655646;
+  cursor: pointer;
+}
+
+.tabBtnActive {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.filterField {
+  display: grid;
+  gap: 5px;
+}
+
+.filterField span {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.filterField input,
+.filterField select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 9px;
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.resultCount {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.table thead th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 9px 10px;
+  background: #faf7f2;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.actionLink {
+  color: var(--rootz-brown);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.actionsCell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.actionBtn,
+.secondaryBtn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.actionBtn {
+  background: #1f2a37;
+  border-color: #1f2a37;
+  color: #fff;
+}
+
+.actionBtn:disabled {
+  background: #d7d7d7;
+  border-color: #d7d7d7;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.filterChipRow {
+  display: flex;
+  align-items: center;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f7f2e8;
+  color: #53463a;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.filterChip button {
+  appearance: none;
+  border: 0;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.emptyState {
+  margin: 0;
+  color: var(--muted);
+}
+
+.previewModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.previewModal {
+  width: min(960px, 100%);
+  max-height: min(90vh, 860px);
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+}
+
+.previewModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.previewModalTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.previewModalClose {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.previewFrame {
+  border: 0;
+  width: 100%;
+  min-height: min(70vh, 700px);
+}
+
+.previewImage {
+  width: 100%;
+  max-height: min(70vh, 700px);
+  object-fit: contain;
+  background: #f6f1e8;
+}
+
+.previewExternalLink {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  color: var(--rootz-brown);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .table {
+    min-width: 760px;
+  }
+}

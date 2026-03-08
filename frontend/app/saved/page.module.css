@@ -1,0 +1,258 @@
+.page {
+  min-height: 100vh;
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 20px 80px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.kicker {
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rootz-brown);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.subhead {
+  max-width: 680px;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+
+.counts {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+}
+
+.tabButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.tabActive {
+  border-color: var(--rootz-green);
+  background: var(--rootz-green-soft);
+  color: var(--text);
+}
+
+.tabCount {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--rootz-sand);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.countBadge {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-width: 140px;
+  display: grid;
+  gap: 4px;
+  box-shadow: var(--shadow);
+}
+
+.countNumber {
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.countLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.errorBox {
+  background: #fbeaea;
+  border: 1px solid #f2b8b5;
+  color: #802323;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0 0 14px;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionKicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge {
+  background: var(--rootz-green-soft);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.listTitle {
+  margin: 0 0 4px;
+}
+
+.listLink {
+  color: var(--rootz-brown);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.listLink:hover {
+  text-decoration: underline;
+}
+
+.listMeta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.secondary {
+  background: var(--rootz-green-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.savedCard {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  align-items: stretch;
+}
+
+.savedMedia {
+  width: 120px;
+  min-height: 90px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #d9d2c6, #c7b9a6);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--border);
+}
+
+.savedBody {
+  display: grid;
+  gap: 4px;
+}
+
+.savedPrice {
+  margin: 0;
+  color: var(--rootz-brown);
+  font-weight: 800;
+}
+
+.loading {
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .counts {
+    width: 100%;
+  }
+}

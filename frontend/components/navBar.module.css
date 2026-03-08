@@ -1,0 +1,240 @@
+.alphaBanner {
+  width: 100%;
+  background: #f7f3dc;
+  border-bottom: 1px solid #e7dfbb;
+}
+
+.alphaBannerInner {
+  margin: 0 auto;
+  padding: 8px 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #5f564b;
+}
+
+.nav {
+  width: 100%;
+  margin: 0 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  background: #f6f3ee;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 24px;
+}
+
+.logoWordmark {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--rootz-brown);
+  text-decoration: none;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--text);
+  padding-right: 24px;
+}
+
+.navLink {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navLink:hover {
+  color: var(--rootz-brown);
+}
+
+.workspaceLink {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.workspaceLink:hover {
+  background: var(--rootz-green-soft);
+  border-color: var(--border);
+}
+
+.workspaceCount {
+  min-width: 22px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--rootz-sand);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.navActions {
+  display: flex;
+  gap: 8px;
+  margin-left: 6px;
+}
+
+.primary,
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 10px 30px rgba(79, 101, 72, 0.25);
+}
+
+.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(79, 101, 72, 0.3);
+}
+
+.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.ghost:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.navLinkDesktop {
+  display: inline-flex;
+}
+
+.navMobile {
+  display: none;
+}
+
+.navLinkMobile {
+  display: inline-flex;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.savedLink {
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background 0.1s ease, border-color 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.savedLink:hover {
+  background: var(--rootz-green-soft);
+  border-color: var(--border);
+}
+
+.savedLinkActive .saveCircle {
+  fill: var(--rootz-sand);
+  stroke: var(--rootz-green);
+}
+
+.savedLinkActive .saveRoots,
+.savedLinkActive .saveSprout {
+  stroke: var(--rootz-green);
+}
+
+.saveIcon {
+  width: 18px;
+  height: 18px;
+}
+
+.saveCircle,
+.saveRoots,
+.saveSprout {
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: transparent;
+}
+
+.savedCount {
+  min-width: 22px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--rootz-sand);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+@media (max-width: 639px) {
+  .alphaBannerInner {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .nav {
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    margin: 0;
+    padding: 12px 16px;
+    border-bottom: none;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+    border-radius: 0;
+  }
+
+  .brand {
+    padding-left: 0;
+  }
+
+  .logoSub {
+    display: none;
+  }
+
+  .navLinks {
+    display: none;
+  }
+
+  .navMobile {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+  }
+}

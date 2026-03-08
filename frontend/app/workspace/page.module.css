@@ -1,0 +1,407 @@
+.page {
+  min-height: 100vh;
+  background: var(--page-bg);
+  color: var(--text);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 20px 88px;
+}
+
+.header {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  margin-bottom: 16px;
+}
+
+.headerBody {
+  display: grid;
+  gap: 8px;
+}
+
+.kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rootz-brown);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 36px);
+  line-height: 1.15;
+}
+
+.subhead {
+  margin: 0;
+  max-width: 720px;
+  color: var(--muted);
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.summaryPanel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.summaryCell {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.summaryLabel {
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.summaryValue {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.summaryGrid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.summaryChip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--rootz-green-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.accountCta {
+  border: 1px solid #d8c8a9;
+  border-radius: 10px;
+  background: #fffaf1;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.accountCtaText {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.accountCtaActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.accountCtaPrimary,
+.accountCtaSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.accountCtaPrimary {
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+}
+
+.accountCtaSecondary {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.filterButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.filterButtonActive {
+  border-color: var(--rootz-green);
+  background: var(--rootz-green-soft);
+}
+
+.filterCount {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--rootz-sand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.errorBox {
+  background: #fbeaea;
+  border: 1px solid #f2b8b5;
+  color: #802323;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.status {
+  margin: 0;
+  color: var(--muted);
+}
+
+.emptyCard {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 8px;
+}
+
+.emptyCard h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.emptyCard p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 620px;
+}
+
+.emptyCta {
+  width: fit-content;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.itemCard {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  position: relative;
+}
+
+.itemCardLinked {
+  cursor: pointer;
+}
+
+.itemCardLink {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 14px;
+}
+
+.itemCardLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.itemTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.itemMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.itemBadges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.subjectBadge,
+.queueBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.subjectBadge {
+  background: #f7f5f1;
+}
+
+.queueBadge {
+  background: var(--rootz-green-soft);
+}
+
+.itemTitleLink,
+.itemTitlePlain {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--rootz-brown);
+  text-decoration: none;
+}
+
+.itemTitleLink:hover {
+  text-decoration: underline;
+}
+
+.itemSubtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.itemMeta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.queueButtonWrap {
+  position: relative;
+  z-index: 2;
+}
+
+.queueButton {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.queueButtonActive {
+  background: var(--rootz-green-soft);
+  border-color: var(--rootz-green);
+}
+
+.queueButton:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summaryTag {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.itemFooter {
+  color: var(--rootz-brown);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 900px) {
+  .header {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+  }
+}
+
+@media (max-width: 700px) {
+  .container {
+    padding-bottom: 104px;
+  }
+
+  .itemTop {
+    flex-direction: column;
+  }
+
+  .queueButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
