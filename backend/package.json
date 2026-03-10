@@ -5,6 +5,8 @@
   "scripts": {
     "prestart": "node scripts/flush-redis-cache.js",
     "start": "node index.js",
+    "predev": "node -r dotenv/config scripts/flush-redis-cache.js dotenv_config_path=.env.development",
+    "dev": "node -r dotenv/config index.js dotenv_config_path=.env.development",
     "test": "node --test tests/**/*.test.js",
     "sanity": "node scripts/sanity.js",
     "backfill:community-coords": "node scripts/backfill-publiccommunity-coords.js"
