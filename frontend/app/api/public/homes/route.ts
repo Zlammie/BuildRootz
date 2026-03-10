@@ -38,6 +38,25 @@ function normalizeString(value: string | null | undefined): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizePublicMediaUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^\/uploads\//i.test(trimmed)) return trimmed;
+  if (/^uploads\//i.test(trimmed)) return `/${trimmed.replace(/^\/+/, "")}`;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (/^\/uploads\//i.test(parsed.pathname)) {
+        return `${parsed.pathname}${parsed.search || ""}`;
+      }
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -197,17 +216,25 @@ function mapDocToListingResult(doc: WithId<Document>) {
       ? (addressField as { line1?: string; street?: string; city?: string; state?: string; zip?: string })
       : {};
   const photos = Array.isArray(doc.photos)
-    ? (doc.photos as Array<{ url?: string }>).map((photo) => photo?.url).filter(Boolean)
+    ? (doc.photos as Array<{ url?: string }>)
+        .map((photo) => normalizePublicMediaUrl(photo?.url))
+        .filter((url): url is string => Boolean(url))
     : [];
   const heroImages = Array.isArray(doc.heroImages)
-    ? (doc.heroImages as string[]).filter(Boolean)
+    ? (doc.heroImages as string[])
+        .map((url) => normalizePublicMediaUrl(url))
+        .filter((url): url is string => Boolean(url))
     : [];
   const images = Array.isArray(doc.images)
-    ? (doc.images as string[]).filter(Boolean)
+    ? (doc.images as string[])
+        .map((url) => normalizePublicMediaUrl(url))
+        .filter((url): url is string => Boolean(url))
     : [];
+  const primaryPhotoFromDoc = normalizePublicMediaUrl(doc.primaryPhotoUrl);
+  const heroImageFromDoc = normalizePublicMediaUrl(doc.heroImage);
   const primaryPhotoUrl =
-    (typeof doc.primaryPhotoUrl === "string" && doc.primaryPhotoUrl) ||
-    (typeof doc.heroImage === "string" && doc.heroImage) ||
+    primaryPhotoFromDoc ||
+    heroImageFromDoc ||
     photos[0] ||
     heroImages[0] ||
     images[0] ||
@@ -312,6 +339,7 @@ function mapLegacyHomeToListingResult(home: {
   updatedAt?: string | null;
 }) {
   const photosPreview = [home.heroImage, ...(home.heroImages || []), ...(home.images || [])]
+    .map((url) => normalizePublicMediaUrl(url))
     .filter((url): url is string => Boolean(url))
     .slice(0, 3);
 

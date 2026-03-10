@@ -26,11 +26,11 @@ test("community identity summary exposes hero, preview images, and highlight sni
     assert.equal(summary._id, "507f1f77bcf86cd799439011");
     assert.equal(
       summary.heroImageUrl,
-      "https://keepup.test/uploads/communities/ten-mile-creek-hero.jpg",
+      "/uploads/communities/ten-mile-creek-hero.jpg",
     );
     assert.deepEqual(summary.imageUrlsPreview, [
-      "https://keepup.test/uploads/communities/ten-mile-creek-hero.jpg",
-      "https://keepup.test/uploads/communities/ten-mile-creek-entry.jpg",
+      "/uploads/communities/ten-mile-creek-hero.jpg",
+      "/uploads/communities/ten-mile-creek-entry.jpg",
       "https://cdn.test/communities/ten-mile-creek-clubhouse.jpg",
     ]);
     assert.deepEqual(summary.photosPreview, summary.imageUrlsPreview);

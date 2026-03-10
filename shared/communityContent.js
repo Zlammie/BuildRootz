@@ -34,6 +34,24 @@ function resolveAssetBaseUrl(options = {}) {
   );
 }
 
+function toRelativeUploadPath(value) {
+  const normalized = cleanString(value);
+  if (!normalized) return null;
+  if (/^\/uploads\//i.test(normalized)) return normalized;
+  if (/^uploads\//i.test(normalized)) return `/${normalized.replace(/^\/+/, "")}`;
+  if (/^https?:\/\//i.test(normalized)) {
+    try {
+      const parsed = new URL(normalized);
+      if (/^\/uploads\//i.test(parsed.pathname)) {
+        return `${parsed.pathname}${parsed.search || ""}`;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function absolutizeAssetUrl(url, options = {}) {
   const normalized = cleanString(url);
   if (!normalized) return null;
@@ -47,6 +65,14 @@ function absolutizeAssetUrl(url, options = {}) {
 
   const path = normalized.startsWith("/") ? normalized : `/${normalized.replace(/^\/+/, "")}`;
   return `${baseUrl.replace(/\/$/, "")}${path}`;
+}
+
+function normalizePublicAssetUrl(url, options = {}) {
+  const normalized = cleanString(url);
+  if (!normalized) return null;
+  const relativeUploadPath = toRelativeUploadPath(normalized);
+  if (relativeUploadPath) return relativeUploadPath;
+  return absolutizeAssetUrl(normalized, options);
 }
 
 function normalizeStringList(value, options = {}) {
@@ -160,6 +186,7 @@ module.exports = {
   cleanString,
   firstString,
   absolutizeAssetUrl,
+  normalizePublicAssetUrl,
   normalizeStringList,
   normalizeHighlights,
   collectCommunityImageUrls,

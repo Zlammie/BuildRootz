@@ -69,6 +69,25 @@ function toValidDate(value) {
   return parsed;
 }
 
+function normalizePublishedMediaUrl(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^\/uploads\//i.test(trimmed)) return trimmed;
+  if (/^uploads\//i.test(trimmed)) return `/${trimmed.replace(/^\/+/, "")}`;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (/^\/uploads\//i.test(parsed.pathname)) {
+        return `${parsed.pathname}${parsed.search || ""}`;
+      }
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
 function cleanOptionalString(value) {
   if (value === null) return null;
   if (typeof value !== "string") return undefined;
@@ -280,6 +299,17 @@ const BUILDER_IN_COMMUNITY_SPEC = {
   modelsSummary: ["array", { address: "string", listingId: "string", floorPlanName: "string" }],
 };
 
+const BUILDER_IN_COMMUNITY_PUBLIC_COMMUNITY_SPEC = {
+  slug: "string",
+  name: "string",
+  city: "string",
+  state: "string",
+  location: ["object", { lat: "number", lng: "number" }],
+  coordinates: ["object", { lat: "number", lng: "number" }],
+  lat: "number",
+  lng: "number",
+};
+
 const PUBLIC_COMMUNITY_SPEC = {
   keepupCommunityId: "string",
   canonicalKey: "string",
@@ -288,6 +318,9 @@ const PUBLIC_COMMUNITY_SPEC = {
   city: "string",
   state: "string",
   location: ["object", { lat: "number", lng: "number" }],
+  coordinates: ["object", { lat: "number", lng: "number" }],
+  lat: "number",
+  lng: "number",
   overview: "string",
   highlights: ["array", "string"],
   heroImageUrl: "string",
@@ -425,8 +458,17 @@ function sanitizeBuilderInCommunity(rawEntry, index, errors) {
     return null;
   }
   const patch = sanitizeBySpec(rawEntry, BUILDER_IN_COMMUNITY_SPEC, errors, `builderInCommunities[${index}]`);
+  const communityPatch = sanitizeBySpec(
+    rawEntry,
+    BUILDER_IN_COMMUNITY_PUBLIC_COMMUNITY_SPEC,
+    errors,
+    `builderInCommunities[${index}]`,
+  );
   if (patch.builder && hasOwn(patch.builder, "slug") && patch.builder.slug !== null) {
     patch.builder.slug = normalizePublicSlug(patch.builder.slug);
+  }
+  if (hasOwn(communityPatch, "slug") && communityPatch.slug !== null) {
+    communityPatch.slug = normalizePublicSlug(communityPatch.slug);
   }
   if (patch.webData?.contactVisibility && !hasOwn(patch.webData.contactVisibility, "showEmail")) {
     patch.webData.contactVisibility.showEmail = false;
@@ -470,6 +512,7 @@ function sanitizeBuilderInCommunity(rawEntry, index, errors) {
     publicCommunityId,
     publicCommunityIdString: publicCommunityId.toString(),
     patch,
+    communityPatch,
   };
 }
 
@@ -639,6 +682,14 @@ function sanitizePublicHome(rawEntry, index, errors) {
         }
       });
     });
+    patch.photos = patch.photos.map((photo) => {
+      const normalizedUrl = normalizePublishedMediaUrl(photo.url);
+      return normalizedUrl ? { ...photo, url: normalizedUrl } : photo;
+    });
+  }
+
+  if (hasOwn(patch, "primaryPhotoUrl") && patch.primaryPhotoUrl) {
+    patch.primaryPhotoUrl = normalizePublishedMediaUrl(patch.primaryPhotoUrl) || patch.primaryPhotoUrl;
   }
 
   return {
@@ -905,8 +956,11 @@ function buildPublicHomeSetDoc(entry, planCatalogId, publishedAt, existingDoc) {
   }
 
   if (hasOwn(patch, "primaryPhotoUrl")) {
-    setDoc.primaryPhotoUrl = patch.primaryPhotoUrl;
-    setDoc.heroImage = patch.primaryPhotoUrl || firstPhotoUrl;
+    const normalizedPrimaryPhotoUrl = patch.primaryPhotoUrl
+      ? normalizePublishedMediaUrl(patch.primaryPhotoUrl) || patch.primaryPhotoUrl
+      : patch.primaryPhotoUrl;
+    setDoc.primaryPhotoUrl = normalizedPrimaryPhotoUrl;
+    setDoc.heroImage = normalizedPrimaryPhotoUrl || firstPhotoUrl;
   } else if (hasOwn(patch, "photos")) {
     setDoc.heroImage = firstPhotoUrl;
   }
@@ -1012,53 +1066,92 @@ function normalizeHoaMonthlyFromWebData(hoa) {
 
 function derivePublicCommunityPatchFromBuilderInCommunity(entryPatch) {
   const webData = isPlainObject(entryPatch?.webData) ? entryPatch.webData : null;
-  if (!webData) return null;
+  const communityInput = isPlainObject(entryPatch?.communityPatch) ? entryPatch.communityPatch : {};
 
   const patch = {};
   const fees = {};
-  const hoaMonthly = normalizeHoaMonthlyFromWebData(webData.hoa);
+  const hoaMonthly = normalizeHoaMonthlyFromWebData(webData?.hoa);
   const rawAmenities =
-    hasOwn(webData, "amenities")
+    hasOwn(webData || {}, "amenities")
       ? webData.amenities
-      : hasOwn(webData, "ammenities")
+      : hasOwn(webData || {}, "ammenities")
         ? webData.ammenities
         : undefined;
   const rawProductTypes =
-    hasOwn(webData, "productTypes")
+    hasOwn(webData || {}, "productTypes")
       ? webData.productTypes
       : undefined;
+
+  if (hasOwn(entryPatch || {}, "keepupCommunityId")) {
+    patch.keepupCommunityId = entryPatch.keepupCommunityId;
+  }
+
+  ["slug", "name", "city", "state"].forEach((field) => {
+    if (hasOwn(communityInput, field)) {
+      patch[field] = communityInput[field];
+    }
+  });
+
+  const location = isPlainObject(communityInput.location) ? communityInput.location : null;
+  const coordinates = isPlainObject(communityInput.coordinates) ? communityInput.coordinates : null;
+  const lat = hasOwn(communityInput, "lat")
+    ? communityInput.lat
+    : hasOwn(location || {}, "lat")
+      ? location.lat
+      : hasOwn(coordinates || {}, "lat")
+        ? coordinates.lat
+        : undefined;
+  const lng = hasOwn(communityInput, "lng")
+    ? communityInput.lng
+    : hasOwn(location || {}, "lng")
+      ? location.lng
+      : hasOwn(coordinates || {}, "lng")
+        ? coordinates.lng
+        : undefined;
+
+  if (typeof lat === "number" && Number.isFinite(lat) && typeof lng === "number" && Number.isFinite(lng)) {
+    patch.location = { lat, lng };
+    patch.coordinates = { lat, lng };
+    patch.lat = lat;
+    patch.lng = lng;
+  } else {
+    if (hasOwn(communityInput, "location")) patch.location = communityInput.location;
+    if (hasOwn(communityInput, "coordinates")) patch.coordinates = communityInput.coordinates;
+    if (hasOwn(communityInput, "lat")) patch.lat = communityInput.lat;
+    if (hasOwn(communityInput, "lng")) patch.lng = communityInput.lng;
+  }
 
   if (hoaMonthly !== undefined) {
     patch.hoaMonthly = hoaMonthly;
     fees.hoaFee = hoaMonthly;
     fees.hoaFrequency = hoaMonthly === null ? null : "monthly";
   }
-  if (hasOwn(webData, "taxRate")) {
+  if (hasOwn(webData || {}, "taxRate")) {
     patch.taxRate = webData.taxRate;
     fees.tax = webData.taxRate;
     fees.taxRate = webData.taxRate;
   }
-  if (hasOwn(webData, "mudTaxRate")) {
+  if (hasOwn(webData || {}, "mudTaxRate")) {
     patch.mudTaxRate = webData.mudTaxRate;
     fees.mudTaxRate = webData.mudTaxRate;
   }
-  if (hasOwn(webData, "hasPID")) {
+  if (hasOwn(webData || {}, "hasPID")) {
     patch.pid = webData.hasPID;
     fees.pid = webData.hasPID;
     fees.hasPid = webData.hasPID;
   }
-  if (hasOwn(webData, "hasMUD")) {
+  if (hasOwn(webData || {}, "hasMUD")) {
     patch.mud = webData.hasMUD;
     fees.mud = webData.hasMUD;
     fees.hasMud = webData.hasMUD;
   }
-  if (hasOwn(webData, "pidFeeAmount")) {
+  if (hasOwn(webData || {}, "pidFeeAmount")) {
     fees.pidFee = webData.pidFeeAmount;
   }
-  if (hasOwn(webData, "pidFeeFrequency")) {
+  if (hasOwn(webData || {}, "pidFeeFrequency")) {
     fees.pidFeeFrequency = webData.pidFeeFrequency;
   }
-  if (hasOwn(webData, "mudFeeAmount")) {
+  if (hasOwn(webData || {}, "mudFeeAmount")) {
     patch.mudFeeAmount = webData.mudFeeAmount;
     fees.mudFee = webData.mudFeeAmount;
   }
@@ -1068,7 +1161,7 @@ function derivePublicCommunityPatchFromBuilderInCommunity(entryPatch) {
   if (rawProductTypes !== undefined) {
     patch.productTypes = normalizeCommunityProductTypesForRender(rawProductTypes);
   }
-  if (hasOwn(webData, "promo")) {
+  if (hasOwn(webData || {}, "promo")) {
     patch.promo = normalizePromo(webData.promo);
   }
 
@@ -1262,7 +1355,10 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
 
     const publishedAt = requestedAt || new Date();
     for (const entry of builderInCommunities) {
-      const communityPatch = derivePublicCommunityPatchFromBuilderInCommunity(entry.patch);
+      const communityPatch = derivePublicCommunityPatchFromBuilderInCommunity({
+        ...entry.patch,
+        communityPatch: entry.communityPatch,
+      });
       if (communityPatch) {
         const resolvedCommunity = await resolveOrCreatePublicCommunity(
           db,

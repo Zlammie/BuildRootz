@@ -282,11 +282,11 @@ test("communities payload upserts overview and media onto PublicCommunity withou
   assert.deepEqual(stored.highlights, ["Trail system", "Resort pool"]);
   assert.equal(
     stored.heroImageUrl,
-    "https://keepup.test/uploads/communities/red-oak-ranch-hero.jpg",
+    "/uploads/communities/red-oak-ranch-hero.jpg",
   );
   assert.deepEqual(stored.imageUrls, [
-    "https://keepup.test/uploads/communities/red-oak-ranch-hero.jpg",
-    "https://keepup.test/uploads/communities/red-oak-ranch-entry.jpg",
+    "/uploads/communities/red-oak-ranch-hero.jpg",
+    "/uploads/communities/red-oak-ranch-entry.jpg",
     "https://cdn.test/communities/red-oak-ranch-clubhouse.jpg",
   ]);
   assert.equal(stored.hoaMonthly, 125);
@@ -316,7 +316,7 @@ test("communities payload upserts overview and media onto PublicCommunity withou
   assert.deepEqual(preserved.highlights, ["Trail system", "Resort pool"]);
   assert.equal(
     preserved.heroImageUrl,
-    "https://keepup.test/uploads/communities/red-oak-ranch-hero.jpg",
+    "/uploads/communities/red-oak-ranch-hero.jpg",
   );
   assert.equal(preserved.hoaMonthly, 125);
   assert.equal(preserved.taxRate, 0.0215);
@@ -465,6 +465,65 @@ test("builderInCommunities webData fee fields sync onto PublicCommunity without 
   assert.equal(preserved.fees?.pidFee, 1350);
   assert.equal(preserved.fees?.pidFeeFrequency, "annual");
   assert.equal(preserved.fees?.mudFee, 925);
+});
+
+test("builderInCommunities maps community identity and coordinate fields onto PublicCommunity", async () => {
+  const companyId = oid().toHexString();
+  const publicCommunityId = oid().toHexString();
+
+  await insertPublicCommunity(publicCommunityId, "Initial Community");
+
+  const created = await postBundle({
+    meta: { keepupCompanyId: companyId, requestedAt: nowIso(), publisherVersion: "keepup-test" },
+    builderInCommunities: [
+      {
+        companyId,
+        publicCommunityId,
+        keepupCommunityId: "keepup-community-123",
+        name: "Ten Mile Creek",
+        city: "Celina",
+        state: "TX",
+        lat: 33.2960722,
+        lng: -96.7501444,
+      },
+    ],
+  });
+
+  assert.equal(created.status, 200);
+  assert.equal(created.body.ok, true);
+
+  const stored = await findPublicCommunity(publicCommunityId);
+  assert.equal(stored.name, "Ten Mile Creek");
+  assert.equal(stored.city, "Celina");
+  assert.equal(stored.state, "TX");
+  assert.equal(stored.keepupCommunityId, "keepup-community-123");
+  assert.equal(stored.lat, 33.2960722);
+  assert.equal(stored.lng, -96.7501444);
+  assert.deepEqual(stored.location, { lat: 33.2960722, lng: -96.7501444 });
+  assert.deepEqual(stored.coordinates, { lat: 33.2960722, lng: -96.7501444 });
+
+  const updated = await postBundle({
+    meta: { keepupCompanyId: companyId, requestedAt: nowIso(), publisherVersion: "keepup-test" },
+    builderInCommunities: [
+      {
+        companyId,
+        publicCommunityId,
+        location: {
+          lat: 33.3,
+          lng: -96.8,
+        },
+      },
+    ],
+  });
+
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.ok, true);
+
+  const updatedStored = await findPublicCommunity(publicCommunityId);
+  assert.equal(updatedStored.lat, 33.3);
+  assert.equal(updatedStored.lng, -96.8);
+  assert.deepEqual(updatedStored.location, { lat: 33.3, lng: -96.8 });
+  assert.deepEqual(updatedStored.coordinates, { lat: 33.3, lng: -96.8 });
 });
 
 test("builderInCommunities accepts legacy ammenities alias but stores canonical amenities", async () => {
@@ -1291,4 +1350,39 @@ test("publicHomes photo patch semantics preserve when omitted and replace when p
   const afterThird = await findKeepupHome("photo-home");
   assert.equal(afterThird.photos.length, 1);
   assert.deepEqual(afterThird.images, ["https://example.com/new.jpg"]);
+});
+
+test("publicHomes normalize KeepUp upload URLs to same-origin-safe relative paths", async () => {
+  const companyId = oid().toHexString();
+  const publicCommunityId = oid().toHexString();
+  await insertPublicCommunity(publicCommunityId, "Media URL Test");
+
+  const response = await postBundle({
+    meta: { keepupCompanyId: companyId, requestedAt: nowIso(), publisherVersion: "keepup-test" },
+    publicHomes: [
+      {
+        companyId,
+        publicCommunityId,
+        keepupListingId: "media-home",
+        primaryPhotoUrl: "https://app.keepupcrm.com/uploads/homes/hero.jpg",
+        photos: [
+          { url: "uploads/homes/photo-1.jpg", sortOrder: 0 },
+          { url: "/uploads/homes/photo-2.jpg", sortOrder: 1 },
+          { url: "https://app.keepupcrm.com/uploads/homes/photo-3.jpg", sortOrder: 2 },
+          { url: "https://cdn.example.com/homes/photo-4.jpg", sortOrder: 3 },
+        ],
+      },
+    ],
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.ok, true);
+
+  const stored = await findKeepupHome("media-home");
+  assert.equal(stored.primaryPhotoUrl, "/uploads/homes/hero.jpg");
+  assert.deepEqual(stored.images, [
+    "/uploads/homes/photo-1.jpg",
+    "/uploads/homes/photo-2.jpg",
+    "/uploads/homes/photo-3.jpg",
+    "https://cdn.example.com/homes/photo-4.jpg",
+  ]);
 });

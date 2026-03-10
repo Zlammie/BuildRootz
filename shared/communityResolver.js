@@ -4,7 +4,7 @@ const {
   cleanString,
   normalizeHighlights,
   normalizeStringList,
-  absolutizeAssetUrl,
+  normalizePublicAssetUrl,
 } = require("./communityContent");
 const {
   normalizeCommunityAmenitiesForRender,
@@ -77,13 +77,14 @@ function roundCoord(value) {
   return null;
 }
 
-function computeCanonicalKey({ name, city, state, lat, lng, location }) {
+function computeCanonicalKey({ name, city, state, lat, lng, location, coordinates }) {
   const normName = normalizeStr(name);
   const normCity = normalizeStr(city);
   const normState = normalizeStr(state);
   const loc = location && typeof location === "object" ? location : {};
-  const latVal = roundCoord(lat ?? loc.lat);
-  const lngVal = roundCoord(lng ?? loc.lng);
+  const coords = coordinates && typeof coordinates === "object" ? coordinates : {};
+  const latVal = roundCoord(lat ?? loc.lat ?? coords.lat);
+  const lngVal = roundCoord(lng ?? loc.lng ?? coords.lng);
   const parts = [normName, normCity, normState];
   if (latVal !== null && lngVal !== null) {
     parts.push(`${latVal},${lngVal}`);
@@ -111,6 +112,55 @@ function parseCommunityObjectId(value) {
     return new ObjectId(value.trim());
   }
   return null;
+}
+
+function toFiniteNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function findFirstFiniteNumber(values = []) {
+  for (const value of values) {
+    const num = toFiniteNumber(value);
+    if (num !== null) return num;
+  }
+  return null;
+}
+
+function buildCommunityCoordinatePatch(input) {
+  const location = asObject(input.location);
+  const coordinates = asObject(input.coordinates);
+  const lat = findFirstFiniteNumber([
+    hasOwn(input, "lat") ? input.lat : undefined,
+    hasOwn(location || {}, "lat") ? location.lat : undefined,
+    hasOwn(coordinates || {}, "lat") ? coordinates.lat : undefined,
+  ]);
+  const lng = findFirstFiniteNumber([
+    hasOwn(input, "lng") ? input.lng : undefined,
+    hasOwn(location || {}, "lng") ? location.lng : undefined,
+    hasOwn(coordinates || {}, "lng") ? coordinates.lng : undefined,
+  ]);
+  if (lat !== null && lng !== null) {
+    return {
+      lat,
+      lng,
+      location: { lat, lng },
+      coordinates: { lat, lng },
+    };
+  }
+
+  const patch = {};
+  if (hasOwn(input, "location")) patch.location = input.location;
+  if (hasOwn(input, "coordinates")) patch.coordinates = input.coordinates;
+  if (hasOwn(input, "lat")) patch.lat = input.lat;
+  if (hasOwn(input, "lng")) patch.lng = input.lng;
+  return patch;
 }
 
 async function ensureCommunityIndexes(col) {
@@ -225,6 +275,7 @@ async function resolveOrCreatePublicCommunity(db, input = {}, options = {}) {
   const $setOnInsert = {
     createdAt: new Date(),
   };
+  const coordinatePatch = buildCommunityCoordinatePatch(input);
   const $set = {
     updatedAt: new Date(),
     ...(slug ? { slug } : {}),
@@ -233,7 +284,7 @@ async function resolveOrCreatePublicCommunity(db, input = {}, options = {}) {
     ...(input.name ? { name: input.name } : {}),
     ...(input.city ? { city: input.city } : {}),
     ...(input.state ? { state: input.state } : {}),
-    ...(input.location ? { location: input.location } : {}),
+    ...coordinatePatch,
   };
   const fees = asObject(input.fees);
   if (hasCommunityDetailsInput(input)) {
@@ -246,13 +297,13 @@ async function resolveOrCreatePublicCommunity(db, input = {}, options = {}) {
     $set.highlights = normalizeHighlights(input.highlights, { maxItems: 6 });
   }
   if (hasOwn(input, "heroImageUrl")) {
-    const heroImageUrl = absolutizeAssetUrl(input.heroImageUrl);
+    const heroImageUrl = normalizePublicAssetUrl(input.heroImageUrl);
     $set.heroImageUrl = heroImageUrl;
     $set.mapImage = heroImageUrl;
   }
   if (hasOwn(input, "imageUrls")) {
     const imageUrls = normalizeStringList(
-      (Array.isArray(input.imageUrls) ? input.imageUrls : []).map((url) => absolutizeAssetUrl(url)),
+      (Array.isArray(input.imageUrls) ? input.imageUrls : []).map((url) => normalizePublicAssetUrl(url)),
       { maxItems: 20 },
     );
     $set.imageUrls = imageUrls;

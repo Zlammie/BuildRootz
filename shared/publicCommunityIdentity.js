@@ -1,7 +1,7 @@
 "use strict";
 
 const {
-  absolutizeAssetUrl,
+  normalizePublicAssetUrl,
   normalizeHighlights,
   normalizeStringList,
 } = require("./communityContent");
@@ -29,7 +29,7 @@ function pickString(...values) {
 
 function mapPublicCommunityIdentitySummary(doc) {
   const imageUrls = normalizeStringList(doc?.imageUrls, { maxItems: 3 })
-    .map((url) => absolutizeAssetUrl(url))
+    .map((url) => normalizePublicAssetUrl(url))
     .filter(Boolean);
   const legacyPreview = normalizeStringList(
     [
@@ -39,13 +39,13 @@ function mapPublicCommunityIdentitySummary(doc) {
     ],
     { maxItems: 3 },
   )
-    .map((url) => absolutizeAssetUrl(url))
+    .map((url) => normalizePublicAssetUrl(url))
     .filter(Boolean);
   const heroImageUrl =
-    absolutizeAssetUrl(doc?.heroImageUrl) ||
-    absolutizeAssetUrl(doc?.heroImage) ||
-    absolutizeAssetUrl(doc?.mapImage) ||
-    absolutizeAssetUrl(doc?.image) ||
+    normalizePublicAssetUrl(doc?.heroImageUrl) ||
+    normalizePublicAssetUrl(doc?.heroImage) ||
+    normalizePublicAssetUrl(doc?.mapImage) ||
+    normalizePublicAssetUrl(doc?.image) ||
     imageUrls[0] ||
     legacyPreview[0] ||
     null;
