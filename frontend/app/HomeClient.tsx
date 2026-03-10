@@ -1045,60 +1045,62 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
                   </div>
                 </div>
 
-                <div className={`${styles.cards} ${styles.cardsSplit}`}>
-                  {sortedListings.length === 0 && (
-                    <div className={styles.emptyState}>
-                      <p>No published homes found yet. Publish a home in KeepUP and refresh.</p>
-                    </div>
-                  )}
-                  {sortedListings.map((home) => {
-                    const companyId = (home.keepupBuilderId || "").trim().toLowerCase();
-                    const communityId = (home.publicCommunityId || "").trim().toLowerCase();
-                    const builderInfo = companyId ? builderMap[companyId] : undefined;
-                    const communityInfo = communityId ? communityMap[communityId] : undefined;
-                    return (
-                      <ListingCard
-                        key={home.id}
-                        home={home}
-                        builder={
-                          builderInfo
-                            ? {
-                                builderName: builderInfo.builderName,
-                                builderSlug:
-                                  builderInfo.builderSlug ||
-                                  resolveBuilderParam({
-                                    builderSlug: builderInfo.builderSlug,
-                                    keepupBuilderId: home.keepupBuilderId,
-                                    builder: builderInfo.builderName || home.builder,
-                                  }),
-                                logoUrl: builderInfo.logoUrl,
-                              }
-                            : null
-                        }
-                        community={
-                          communityInfo
-                            ? {
-                                name: communityInfo.name,
-                                slug: communityInfo.slug,
-                                city: communityInfo.city,
-                                state: communityInfo.state,
-                                mapImage:
-                                  communityInfo.heroImageUrl ||
-                                  communityInfo.imageUrlsPreview?.[0] ||
-                                  communityInfo.photosPreview?.[0],
-                              }
-                            : null
-                        }
-                        variant="compact"
-                        showSaveButton
-                        isHighlighted={hoveredHomeId === home.id}
-                        onMouseEnter={() => setHoveredHomeId(home.id)}
-                        onMouseLeave={() =>
-                          setHoveredHomeId((current) => (current === home.id ? null : current))
-                        }
-                      />
-                    );
-                  })}
+                <div className={styles.listScrollRegion}>
+                  <div className={`${styles.cards} ${styles.cardsSplit}`}>
+                    {sortedListings.length === 0 && (
+                      <div className={styles.emptyState}>
+                        <p>No published homes found yet. Publish a home in KeepUP and refresh.</p>
+                      </div>
+                    )}
+                    {sortedListings.map((home) => {
+                      const companyId = (home.keepupBuilderId || "").trim().toLowerCase();
+                      const communityId = (home.publicCommunityId || "").trim().toLowerCase();
+                      const builderInfo = companyId ? builderMap[companyId] : undefined;
+                      const communityInfo = communityId ? communityMap[communityId] : undefined;
+                      return (
+                        <ListingCard
+                          key={home.id}
+                          home={home}
+                          builder={
+                            builderInfo
+                              ? {
+                                  builderName: builderInfo.builderName,
+                                  builderSlug:
+                                    builderInfo.builderSlug ||
+                                    resolveBuilderParam({
+                                      builderSlug: builderInfo.builderSlug,
+                                      keepupBuilderId: home.keepupBuilderId,
+                                      builder: builderInfo.builderName || home.builder,
+                                    }),
+                                  logoUrl: builderInfo.logoUrl,
+                                }
+                              : null
+                          }
+                          community={
+                            communityInfo
+                              ? {
+                                  name: communityInfo.name,
+                                  slug: communityInfo.slug,
+                                  city: communityInfo.city,
+                                  state: communityInfo.state,
+                                  mapImage:
+                                    communityInfo.heroImageUrl ||
+                                    communityInfo.imageUrlsPreview?.[0] ||
+                                    communityInfo.photosPreview?.[0],
+                                }
+                              : null
+                          }
+                          variant="compact"
+                          showSaveButton
+                          isHighlighted={hoveredHomeId === home.id}
+                          onMouseEnter={() => setHoveredHomeId(home.id)}
+                          onMouseLeave={() =>
+                            setHoveredHomeId((current) => (current === home.id ? null : current))
+                          }
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
