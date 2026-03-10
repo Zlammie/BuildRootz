@@ -310,7 +310,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
   const [urlReady, setUrlReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [viewModeReady, setViewModeReady] = useState(false);
-  const [layerMode, setLayerMode] = useState<LayerMode>("community");
+  const [layerMode, setLayerMode] = useState<LayerMode>("community+inventory");
   const [layerModeReady, setLayerModeReady] = useState(false);
   const [communityPoints, setCommunityPoints] = useState<CommunityMapPoint[]>([]);
   const [communityPointsReady, setCommunityPointsReady] = useState(false);
@@ -413,10 +413,10 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
       if (fromStorage) {
         setLayerMode(fromStorage);
       } else {
-        setLayerMode("community");
+        setLayerMode("community+inventory");
       }
     } else {
-      setLayerMode("community");
+      setLayerMode("community+inventory");
     }
     setLayerModeReady(true);
   }, [searchParams]);

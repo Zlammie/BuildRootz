@@ -843,6 +843,7 @@
   flex-direction: column;
   background: var(--surface);
   min-height: 0;
+  overflow: hidden;
 }
 
 .listOnlyPanel {
@@ -891,8 +892,12 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-items: start;
   overflow-y: auto;
-  flex: 1;
+  overscroll-behavior: contain;
+  min-height: 0;
+  flex: 1 1 0;
   align-content: start;
 }
 

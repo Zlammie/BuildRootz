@@ -77,6 +77,18 @@ const INVENTORY_SOURCE_ID = "brz-inventory";
 const INVENTORY_CLUSTER_LAYER_ID = "brz-inventory-clusters";
 const INVENTORY_CLUSTER_COUNT_LAYER_ID = "brz-inventory-cluster-count";
 const INVENTORY_UNCLUSTERED_LAYER_ID = "brz-inventory-unclustered";
+const INVENTORY_PRICE_LABEL_LAYER_ID = "brz-inventory-price-labels";
+
+const INVENTORY_CLUSTER_RADIUS = 56;
+const INVENTORY_CLUSTER_MAX_ZOOM = 12;
+const INVENTORY_PRICE_LABEL_MIN_ZOOM = 13;
+
+const compactPriceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 function isValidCoordinate(lat: unknown, lng: unknown): lat is number {
   return (
@@ -97,6 +109,53 @@ function markerStatusKey(status?: string): "available" | "inventory" | "comingSo
   if (key.includes("coming")) return "comingSoon";
   if (key.includes("model")) return "model";
   return "available";
+}
+
+function formatInventoryPinPrice(price: unknown): string {
+  if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return "";
+  return compactPriceFormatter.format(price).replace(".0", "");
+}
+
+function spreadDuplicateCoordinates(homes: MappableHome[]): MappableHome[] {
+  const groupedByCoordinate = new Map<string, MappableHome[]>();
+
+  homes.forEach((home) => {
+    const key = `${home.lat.toFixed(6)},${home.lng.toFixed(6)}`;
+    const existing = groupedByCoordinate.get(key);
+    if (existing) {
+      existing.push(home);
+    } else {
+      groupedByCoordinate.set(key, [home]);
+    }
+  });
+
+  const adjustedCoordinates = new Map<string, { lat: number; lng: number }>();
+  groupedByCoordinate.forEach((group) => {
+    if (group.length <= 1) return;
+
+    const radialDistanceMeters = Math.min(42, 12 + group.length * 3);
+    group.forEach((home, index) => {
+      const angle = (Math.PI * 2 * index) / group.length;
+      const latOffset = (Math.sin(angle) * radialDistanceMeters) / 111_320;
+      const lngScale = Math.max(Math.cos((home.lat * Math.PI) / 180), 0.15);
+      const lngOffset = (Math.cos(angle) * radialDistanceMeters) / (111_320 * lngScale);
+
+      adjustedCoordinates.set(home.id, {
+        lat: home.lat + latOffset,
+        lng: home.lng + lngOffset,
+      });
+    });
+  });
+
+  return homes.map((home) => {
+    const adjusted = adjustedCoordinates.get(home.id);
+    if (!adjusted) return home;
+    return {
+      ...home,
+      lat: adjusted.lat,
+      lng: adjusted.lng,
+    };
+  });
 }
 
 function boundsToKey(bounds: MapBounds | null): string {
@@ -196,10 +255,12 @@ export default function ListingsMap({
 
   const inventoryLayerEnabled = layerMode === "community+inventory";
   const homesWithGeo = useMemo<MappableHome[]>(
-    () =>
-      homes.filter((home): home is MappableHome =>
+    () => {
+      const mappableHomes = homes.filter((home): home is MappableHome =>
         isValidCoordinate(home.lat, home.lng),
-      ),
+      );
+      return spreadDuplicateCoordinates(mappableHomes);
+    },
     [homes],
   );
   const homesById = useMemo(() => {
@@ -268,6 +329,7 @@ export default function ListingsMap({
             homeId: home.id,
             status: markerStatusKey(home.status),
             isActive: hoveredHomeId === home.id,
+            priceLabel: formatInventoryPinPrice(home.price),
           },
         })),
       }) as GeoJSON.FeatureCollection<GeoJSON.Point>,
@@ -371,8 +433,8 @@ export default function ListingsMap({
           type: "geojson",
           data: inventoryGeoJson,
           cluster: true,
-          clusterRadius: 40,
-          clusterMaxZoom: 14,
+          clusterRadius: INVENTORY_CLUSTER_RADIUS,
+          clusterMaxZoom: INVENTORY_CLUSTER_MAX_ZOOM,
         });
       }
       if (!map.getLayer(INVENTORY_CLUSTER_LAYER_ID)) {
@@ -446,14 +508,51 @@ export default function ListingsMap({
             "circle-radius": [
               "case",
               ["boolean", ["get", "isActive"], false],
-              8,
-              5,
+              9,
+              6,
             ],
             "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 2,
           },
           layout: {
             visibility: inventoryLayerEnabled ? "visible" : "none",
+          },
+        });
+      }
+      if (!map.getLayer(INVENTORY_PRICE_LABEL_LAYER_ID)) {
+        map.addLayer({
+          id: INVENTORY_PRICE_LABEL_LAYER_ID,
+          type: "symbol",
+          source: INVENTORY_SOURCE_ID,
+          minzoom: INVENTORY_PRICE_LABEL_MIN_ZOOM,
+          filter: [
+            "all",
+            ["!", ["has", "point_count"]],
+            ["!=", ["coalesce", ["get", "priceLabel"], ""], ""],
+          ],
+          layout: {
+            "text-field": ["get", "priceLabel"],
+            "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+            "text-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              INVENTORY_PRICE_LABEL_MIN_ZOOM,
+              11,
+              16,
+              14,
+            ],
+            "text-anchor": "top",
+            "text-offset": [0, 1.1],
+            "text-allow-overlap": false,
+            "text-ignore-placement": false,
+            visibility: inventoryLayerEnabled ? "visible" : "none",
+          },
+          paint: {
+            "text-color": "#463324",
+            "text-halo-color": "rgba(255, 255, 255, 0.95)",
+            "text-halo-width": 1.8,
+            "text-halo-blur": 0.6,
           },
         });
       }
@@ -493,7 +592,12 @@ export default function ListingsMap({
     const map = mapRef.current;
     if (!map || !layersReady) return;
     const visibility = inventoryLayerEnabled ? "visible" : "none";
-    [INVENTORY_CLUSTER_LAYER_ID, INVENTORY_CLUSTER_COUNT_LAYER_ID, INVENTORY_UNCLUSTERED_LAYER_ID].forEach(
+    [
+      INVENTORY_CLUSTER_LAYER_ID,
+      INVENTORY_CLUSTER_COUNT_LAYER_ID,
+      INVENTORY_UNCLUSTERED_LAYER_ID,
+      INVENTORY_PRICE_LABEL_LAYER_ID,
+    ].forEach(
       (layerId) => {
         if (map.getLayer(layerId)) {
           map.setLayoutProperty(layerId, "visibility", visibility);
@@ -625,6 +729,11 @@ export default function ListingsMap({
       map.on("mouseenter", INVENTORY_UNCLUSTERED_LAYER_ID, onInventoryPinEnter);
       map.on("mouseleave", INVENTORY_UNCLUSTERED_LAYER_ID, onInventoryPinLeave);
     }
+    if (map.getLayer(INVENTORY_PRICE_LABEL_LAYER_ID)) {
+      map.on("click", INVENTORY_PRICE_LABEL_LAYER_ID, onInventoryPinClick);
+      map.on("mouseenter", INVENTORY_PRICE_LABEL_LAYER_ID, onInventoryPinEnter);
+      map.on("mouseleave", INVENTORY_PRICE_LABEL_LAYER_ID, onInventoryPinLeave);
+    }
 
     return () => {
       if (map.getLayer(COMMUNITY_CLUSTER_LAYER_ID)) {
@@ -642,6 +751,11 @@ export default function ListingsMap({
         map.off("click", INVENTORY_UNCLUSTERED_LAYER_ID, onInventoryPinClick);
         map.off("mouseenter", INVENTORY_UNCLUSTERED_LAYER_ID, onInventoryPinEnter);
         map.off("mouseleave", INVENTORY_UNCLUSTERED_LAYER_ID, onInventoryPinLeave);
+      }
+      if (map.getLayer(INVENTORY_PRICE_LABEL_LAYER_ID)) {
+        map.off("click", INVENTORY_PRICE_LABEL_LAYER_ID, onInventoryPinClick);
+        map.off("mouseenter", INVENTORY_PRICE_LABEL_LAYER_ID, onInventoryPinEnter);
+        map.off("mouseleave", INVENTORY_PRICE_LABEL_LAYER_ID, onInventoryPinLeave);
       }
     };
   }, [layersReady, onHoverHome, router]);
@@ -687,9 +801,11 @@ export default function ListingsMap({
     if (!communityPointsReady && communitiesWithGeo.length === 0) return;
 
     const pointsToFit =
-      communitiesWithGeo.length > 0
-        ? communitiesWithGeo.map((community) => [community.lng, community.lat] as [number, number])
-        : homesWithGeo.map((home) => [home.lng, home.lat] as [number, number]);
+      inventoryLayerEnabled && homesWithGeo.length > 0
+        ? homesWithGeo.map((home) => [home.lng, home.lat] as [number, number])
+        : communitiesWithGeo.length > 0
+          ? communitiesWithGeo.map((community) => [community.lng, community.lat] as [number, number])
+          : homesWithGeo.map((home) => [home.lng, home.lat] as [number, number]);
     if (!pointsToFit.length) return;
 
     initialResultsFitDoneRef.current = true;
@@ -713,6 +829,7 @@ export default function ListingsMap({
     communityPointsReady,
     fitToHomesOnLoad,
     homesWithGeo,
+    inventoryLayerEnabled,
   ]);
 
   useEffect(() => {
