@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import NavBar from "../components/NavBar";
 import ListingCard from "../components/ListingCard";
@@ -52,6 +52,7 @@ type ListingsApiResult = {
   sqft?: number | null;
   lat?: number | null;
   lng?: number | null;
+  coordinateSource?: string | null;
   primaryPhotoUrl?: string | null;
   photosPreview?: string[];
   planCatalogId?: string | null;
@@ -103,6 +104,10 @@ type ViewMode = "split" | "list" | "map";
 const VIEW_MODE_STORAGE_KEY = "brz:viewMode";
 const MAP_LAYER_STORAGE_KEY = "brz:mapLayerMode";
 const MAP_BOUNDS_EPSILON = 0.0008;
+const SPLIT_STACK_BREAKPOINT_PX = 1024;
+const SPLIT_VIEWPORT_BOTTOM_GAP_PX = 16;
+const SPLIT_MIN_HEIGHT_PX = 440;
+const SPLIT_MAX_HEIGHT_PX = 980;
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -326,6 +331,9 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
   const [saveSearchStatus, setSaveSearchStatus] = useState<string | null>(null);
   const [saveSearchError, setSaveSearchError] = useState<string | null>(null);
   const [savingSearch, setSavingSearch] = useState(false);
+  const shellRef = useRef<HTMLElement | null>(null);
+  const splitRef = useRef<HTMLDivElement | null>(null);
+  const [splitViewportHeight, setSplitViewportHeight] = useState<number | null>(null);
 
   useEffect(() => {
     setSearchDraft(routeFilters.q);
@@ -467,6 +475,49 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     setMapReferenceBounds(nextBounds);
     setHasUnappliedMapMove(false);
   }, [routeBoundsKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (viewMode !== "split") {
+      setSplitViewportHeight(null);
+      return;
+    }
+
+    const measureSplitHeight = () => {
+      if (window.innerWidth <= SPLIT_STACK_BREAKPOINT_PX) {
+        setSplitViewportHeight(null);
+        return;
+      }
+      const splitNode = splitRef.current;
+      if (!splitNode) return;
+      const bounds = splitNode.getBoundingClientRect();
+      const availableHeight = window.innerHeight - bounds.top - SPLIT_VIEWPORT_BOTTOM_GAP_PX;
+      if (!Number.isFinite(availableHeight)) return;
+      const clampedHeight = Math.max(
+        SPLIT_MIN_HEIGHT_PX,
+        Math.min(SPLIT_MAX_HEIGHT_PX, Math.floor(availableHeight)),
+      );
+      setSplitViewportHeight((prev) => (prev === clampedHeight ? prev : clampedHeight));
+    };
+
+    measureSplitHeight();
+    const raf = window.requestAnimationFrame(measureSplitHeight);
+    window.addEventListener("resize", measureSplitHeight);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => measureSplitHeight());
+      observer.observe(document.body);
+      if (shellRef.current) {
+        observer.observe(shellRef.current);
+      }
+    }
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measureSplitHeight);
+      observer?.disconnect();
+    };
+  }, [openFilter, viewMode]);
 
   const replaceBoundsInUrl = useCallback(
     (nextBounds: MapBounds | null) => {
@@ -633,6 +684,14 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
         ) {
           console.warn("[listings] LEGACY_FALLBACK_USED");
         }
+        if (Array.isArray(data.warnings)) {
+          const missingCoordsWarning = data.warnings.find((warning) =>
+            warning.startsWith("MISSING_COORDINATES:"),
+          );
+          if (missingCoordsWarning) {
+            console.warn(`[listings] ${missingCoordsWarning}`);
+          }
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
         const message = err instanceof Error ? err.message : "Unable to load listings.";
@@ -745,6 +804,13 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     };
   }, [sortedListings]);
 
+  const splitViewportStyle = useMemo<CSSProperties | undefined>(() => {
+    if (splitViewportHeight == null) return undefined;
+    return {
+      ["--split-viewport-height" as const]: `${splitViewportHeight}px`,
+    };
+  }, [splitViewportHeight]);
+
   useEffect(() => {
     if (!hoveredHomeId) return;
     if (!sortedListings.some((home) => home.id === hoveredHomeId)) {
@@ -795,7 +861,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
           </div>
         )}
 
-        <section className={styles.shell}>
+        <section className={styles.shell} ref={shellRef}>
           <div className={styles.toolbar}>
               <div className={styles.toolbarLeft}>
                 <span className={styles.dotAvailable} />
@@ -1003,7 +1069,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
           </div>
 
           {viewMode === "split" && (
-            <div className={styles.split}>
+            <div className={styles.split} ref={splitRef} style={splitViewportStyle}>
               <div className={styles.mapPanel}>
                 <div className={styles.mapModePanel}>
                   <p className={styles.mapModeMeta}>

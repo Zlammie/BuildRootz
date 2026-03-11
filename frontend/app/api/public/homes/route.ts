@@ -76,6 +76,134 @@ function parseIntegerParam(value: string | null, fallback: number, min = 1, max 
   return Math.min(max, Math.max(min, rounded));
 }
 
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function toCoordinatePair(latValue: unknown, lngValue: unknown): { lat: number; lng: number } | null {
+  const lat = toFiniteNumber(latValue);
+  const lng = toFiniteNumber(lngValue);
+  if (lat === null || lng === null) return null;
+  return { lat, lng };
+}
+
+function toGeoJsonCoordinatePair(value: unknown): { lat: number; lng: number } | null {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  const lng = toFiniteNumber(value[0]);
+  const lat = toFiniteNumber(value[1]);
+  if (lat === null || lng === null) return null;
+  return { lat, lng };
+}
+
+function isValidCoordinatePair(lat: number, lng: number): boolean {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (lat < -90 || lat > 90) return false;
+  if (lng < -180 || lng > 180) return false;
+  // Treat 0/0 as invalid placeholder coordinates.
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return false;
+  return true;
+}
+
+type CoordinateResolution = {
+  lat: number | null;
+  lng: number | null;
+  source: string | null;
+};
+
+function resolveHomeCoordinates(doc: WithId<Document>): CoordinateResolution {
+  const geo = (doc.geo as Record<string, unknown> | undefined) || {};
+  const coordinates = (doc.coordinates as Record<string, unknown> | undefined) || {};
+  const location = (doc.location as Record<string, unknown> | undefined) || {};
+
+  const candidates: Array<{ source: string; pair: { lat: number; lng: number } | null }> = [
+    {
+      source: "lat_lng",
+      pair: toCoordinatePair(
+        (doc as { lat?: unknown }).lat,
+        (doc as { lng?: unknown }).lng,
+      ),
+    },
+    {
+      source: "geo_lat_lng",
+      pair: toCoordinatePair(geo.lat, geo.lng),
+    },
+    {
+      source: "coordinates_lat_lng",
+      pair: toCoordinatePair(coordinates.lat, coordinates.lng),
+    },
+    {
+      source: "location_lat_lng",
+      pair: toCoordinatePair(location.lat, location.lng),
+    },
+    {
+      source: "geo_coordinates_array",
+      pair: toGeoJsonCoordinatePair(geo.coordinates),
+    },
+    {
+      source: "coordinates_array",
+      pair: toGeoJsonCoordinatePair(coordinates.coordinates),
+    },
+    {
+      source: "location_coordinates_array",
+      pair: toGeoJsonCoordinatePair(location.coordinates),
+    },
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate.pair) continue;
+    if (!isValidCoordinatePair(candidate.pair.lat, candidate.pair.lng)) continue;
+    return {
+      lat: candidate.pair.lat,
+      lng: candidate.pair.lng,
+      source: candidate.source,
+    };
+  }
+
+  return {
+    lat: null,
+    lng: null,
+    source: null,
+  };
+}
+
+function collectCoordinateWarnings(
+  rows: Array<{ lat?: number | null; lng?: number | null }>,
+): string[] {
+  const warnings: string[] = [];
+  let missing = 0;
+  const buckets = new Map<string, number>();
+
+  rows.forEach((row) => {
+    const lat = typeof row.lat === "number" ? row.lat : null;
+    const lng = typeof row.lng === "number" ? row.lng : null;
+    if (lat === null || lng === null || !isValidCoordinatePair(lat, lng)) {
+      missing += 1;
+      return;
+    }
+    const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    buckets.set(key, (buckets.get(key) || 0) + 1);
+  });
+
+  if (missing > 0) {
+    warnings.push(`MISSING_COORDINATES:${missing}`);
+  }
+
+  const duplicateRows = Array.from(buckets.values()).reduce(
+    (sum, count) => (count > 1 ? sum + count : sum),
+    0,
+  );
+  if (duplicateRows > 0) {
+    warnings.push(`DUPLICATE_COORDINATES:${duplicateRows}`);
+  }
+
+  return warnings;
+}
+
 type MapBounds = {
   minLng: number;
   minLat: number;
@@ -243,11 +371,7 @@ function mapDocToListingResult(doc: WithId<Document>) {
     .filter((url): url is string => Boolean(url))
     .slice(0, 3);
 
-  const geo =
-    (doc.geo as { lat?: number; lng?: number }) ||
-    (doc.coordinates as { lat?: number; lng?: number }) ||
-    (doc.location as { lat?: number; lng?: number }) ||
-    {};
+  const resolvedCoordinates = resolveHomeCoordinates(doc);
 
   const price =
     typeof doc.listPrice === "number"
@@ -290,8 +414,9 @@ function mapDocToListingResult(doc: WithId<Document>) {
     beds: typeof doc.beds === "number" ? doc.beds : null,
     baths: typeof doc.baths === "number" ? doc.baths : null,
     sqft: typeof doc.sqft === "number" ? doc.sqft : null,
-    lat: typeof geo.lat === "number" ? geo.lat : null,
-    lng: typeof geo.lng === "number" ? geo.lng : null,
+    lat: resolvedCoordinates.lat,
+    lng: resolvedCoordinates.lng,
+    coordinateSource: resolvedCoordinates.source,
     primaryPhotoUrl,
     photosPreview,
     planCatalogId:
@@ -366,6 +491,7 @@ function mapLegacyHomeToListingResult(home: {
     sqft: home.sqft ?? null,
     lat: typeof home.lat === "number" ? home.lat : null,
     lng: typeof home.lng === "number" ? home.lng : null,
+    coordinateSource: null,
     primaryPhotoUrl: photosPreview[0] || null,
     photosPreview,
     planCatalogId: null,
@@ -686,7 +812,7 @@ export async function GET(request: Request) {
         pageSize,
         total,
         results,
-        warnings: [],
+        warnings: collectCoordinateWarnings(results),
       };
       if (includeIdentity) {
         responsePayload.includes = await loadIdentityIncludes(db, results);
@@ -726,7 +852,7 @@ export async function GET(request: Request) {
       pageSize,
       total: legacyFiltered.length,
       results,
-      warnings: ["LEGACY_FALLBACK_USED"],
+      warnings: ["LEGACY_FALLBACK_USED", ...collectCoordinateWarnings(results)],
     };
     if (includeIdentity) {
       responsePayload.includes = await loadIdentityIncludes(db, results);

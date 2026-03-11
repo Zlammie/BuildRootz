@@ -342,6 +342,7 @@ export function hasValidCoordinates(home?: Pick<ListingLike, "lat" | "lng"> | nu
     home.lat >= -90 &&
     home.lat <= 90 &&
     home.lng >= -180 &&
-    home.lng <= 180
+    home.lng <= 180 &&
+    !(Math.abs(home.lat) < 0.000001 && Math.abs(home.lng) < 0.000001)
   );
 }
