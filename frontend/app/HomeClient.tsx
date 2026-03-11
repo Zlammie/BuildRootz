@@ -100,6 +100,9 @@ type SortKey = "default" | "price-asc" | "price-desc" | "sqft-asc" | "sqft-desc"
 type MoveIn = "all" | "ready" | "1-2" | "3-6";
 type FilterKey = "price" | "bedbath" | "movein" | null;
 type ViewMode = "split" | "list" | "map";
+type SplitViewportStyle = CSSProperties & {
+  "--split-viewport-height": string;
+};
 
 const VIEW_MODE_STORAGE_KEY = "brz:viewMode";
 const MAP_LAYER_STORAGE_KEY = "brz:mapLayerMode";
@@ -804,10 +807,10 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     };
   }, [sortedListings]);
 
-  const splitViewportStyle = useMemo<CSSProperties | undefined>(() => {
+  const splitViewportStyle = useMemo<SplitViewportStyle | undefined>(() => {
     if (splitViewportHeight == null) return undefined;
     return {
-      ["--split-viewport-height" as const]: `${splitViewportHeight}px`,
+      "--split-viewport-height": `${splitViewportHeight}px`,
     };
   }, [splitViewportHeight]);
 
