@@ -16,7 +16,9 @@ import {
   getPrimaryImage,
   getSpecPills,
   getStatusBadge,
+  getStatusBadgeFromValue,
 } from "../../lib/listingFormatters";
+import { MAPBOX_STYLE_URL, MAPBOX_TOKEN } from "../../lib/mapbox";
 import {
   PRICE_BUBBLE_ZOOM_HYSTERESIS,
   PRICE_BUBBLE_ZOOM_THRESHOLD,
@@ -35,6 +37,7 @@ export type MapBounds = {
 
 export type BoundsChangeSource = "user" | "programmatic";
 export type LayerMode = "community" | "community+inventory";
+type RenderMode = "split" | "map";
 
 export type CommunityMapPoint = {
   id: string;
@@ -64,14 +67,13 @@ type Props = {
   searchingThisArea: boolean;
   onViewportBoundsChange: (bounds: MapBounds, source: BoundsChangeSource) => void;
   onSearchThisArea: () => void;
+  renderMode: RenderMode;
   layerMode: LayerMode;
   onLayerModeChange: (mode: LayerMode) => void;
 };
 
 type MappableHome = PublicHome & { lat: number; lng: number };
 
-const MAPBOX_TOKEN =
-  process.env.NEXT_PUBLIC_MAPBOX_TOKEN || process.env.MAPBOX_ACCESS_TOKEN || "";
 const DEFAULT_CENTER: [number, number] = [-96.797, 32.7767];
 const BOUNDS_EPSILON = 0.0008;
 
@@ -87,11 +89,54 @@ const INVENTORY_UNCLUSTERED_LAYER_ID = "brz-inventory-unclustered";
 
 const INVENTORY_CLUSTER_RADIUS = 56;
 const INVENTORY_CLUSTER_MAX_ZOOM = Math.max(0, Math.floor(PRICE_BUBBLE_ZOOM_THRESHOLD - 1));
+const INVENTORY_AUTO_REVEAL_ZOOM = Math.max(0, PRICE_BUBBLE_ZOOM_THRESHOLD - 0.75);
+const INVENTORY_AUTO_REVEAL_ZOOM_HYSTERESIS = 0.2;
 const MAX_PRICE_BUBBLES = 300;
+const PRICE_BUBBLE_MIN_WIDTH = 56;
+const PRICE_BUBBLE_MAX_WIDTH = 136;
+const PRICE_BUBBLE_STACK_SPACING_X = 18;
+const PRICE_BUBBLE_STACK_SPACING_Y = 8;
+const PRICE_BUBBLE_STACK_MAX_OFFSET_X = 54;
+const PRICE_BUBBLE_STACK_MAX_OFFSET_Y = 24;
+const PRICE_BUBBLE_OVERLAP_PADDING_X = 12;
+const PRICE_BUBBLE_OVERLAP_MIN_X = 44;
+const PRICE_BUBBLE_OVERLAP_MAX_X = 96;
+const PRICE_BUBBLE_OVERLAP_Y = 26;
+const MAP_DEBUG_STORAGE_KEY = "brz:map-debug";
+const MAP_DEBUG_SAMPLE_SIZE = 3;
+const MAP_DEBUG_DRAG_LOG_INTERVAL_MS = 120;
 
 type CoordinateDiagnostics = {
   missingCount: number;
   duplicateCount: number;
+};
+
+type MapDebugStatus = {
+  createCount: number;
+  removeCount: number;
+  mapCreated: boolean;
+  loadFired: boolean;
+  styleLoadFired: boolean;
+  idleFired: boolean;
+  canvasFound: boolean;
+  mapboxContainerFound: boolean;
+  controlContainerFound: boolean;
+  containerSize: string;
+  canvasSize: string;
+  lastError: string | null;
+};
+
+type PriceBubbleCandidate = {
+  home: MappableHome;
+  priceLabel: string;
+  projectedX: number;
+  projectedY: number;
+  estimatedWidth: number;
+};
+
+type PriceBubbleLayout = {
+  offset: [number, number];
+  zIndex: number;
 };
 
 function isValidCoordinate(lat: unknown, lng: unknown): lat is number {
@@ -109,11 +154,25 @@ function isValidCoordinate(lat: unknown, lng: unknown): lat is number {
 }
 
 function markerStatusKey(status?: string): "available" | "inventory" | "comingSoon" | "model" {
-  const key = (status || "").toLowerCase();
-  if (key.includes("inventory") || key.includes("spec")) return "inventory";
-  if (key.includes("coming")) return "comingSoon";
-  if (key.includes("model")) return "model";
+  const badge = getStatusBadgeFromValue(status);
+  if (badge.variant === "inventory") return "inventory";
+  if (badge.variant === "comingSoon") return "comingSoon";
+  if (badge.variant === "model") return "model";
   return "available";
+}
+
+function readRootColorVar(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+function setDebugMapInstance(map: mapboxgl.Map | null) {
+  if (typeof window === "undefined") return;
+  const debugWindow = window as typeof window & {
+    __BRZ_MAP_DEBUG_INSTANCE__?: mapboxgl.Map | null;
+  };
+  debugWindow.__BRZ_MAP_DEBUG_INSTANCE__ = map;
 }
 
 function buildCoordinateDiagnostics(
@@ -180,6 +239,158 @@ function parseFeatureNumber(value: unknown): number | null {
   return null;
 }
 
+function roundDebugValue(value: number): number {
+  return Number(value.toFixed(2));
+}
+
+function isMapDebugEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.localStorage.getItem(MAP_DEBUG_STORAGE_KEY) === "1" ||
+    (window as typeof window & { __BRZ_MAP_DEBUG__?: boolean }).__BRZ_MAP_DEBUG__ === true
+  );
+}
+
+function logMarkerDragSnapshot(
+  label: string,
+  map: mapboxgl.Map,
+  homesById: Map<string, MappableHome>,
+  markersById: Map<string, mapboxgl.Marker>,
+) {
+  if (typeof window === "undefined") return;
+
+  const center = map.getCenter();
+  const markers = Array.from(markersById.entries())
+    .slice(0, MAP_DEBUG_SAMPLE_SIZE)
+    .map(([homeId, marker]) => {
+      const home = homesById.get(homeId);
+      const element = marker.getElement();
+      const computedStyle = window.getComputedStyle(element);
+      const lngLat = marker.getLngLat();
+      const projected = map.project([lngLat.lng, lngLat.lat]);
+
+      return {
+        homeId,
+        lat: home ? roundDebugValue(home.lat) : roundDebugValue(lngLat.lat),
+        lng: home ? roundDebugValue(home.lng) : roundDebugValue(lngLat.lng),
+        projected: {
+          x: roundDebugValue(projected.x),
+          y: roundDebugValue(projected.y),
+        },
+        markerInlineTransform: element.style.transform || "",
+        markerComputedTransform: computedStyle.transform || "",
+        markerTransition: computedStyle.transition || "",
+      };
+    });
+
+  console.debug("[ListingsMapDebug]", label, {
+    center: {
+      lng: roundDebugValue(center.lng),
+      lat: roundDebugValue(center.lat),
+    },
+    zoom: roundDebugValue(map.getZoom()),
+    markerCount: markersById.size,
+    canvasTransform: map.getCanvas().style.transform || "",
+    canvasContainerTransform: map.getCanvasContainer().style.transform || "",
+    markers,
+  });
+}
+
+function formatDebugError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error.trim();
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message.trim();
+  }
+  return "Unknown error";
+}
+
+function formatElementSize(element: Element | null): string {
+  if (!(element instanceof HTMLElement) && !(element instanceof HTMLCanvasElement)) {
+    return "missing";
+  }
+  const rect = element.getBoundingClientRect();
+  return `${Math.round(rect.width)}x${Math.round(rect.height)}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function estimatePriceBubbleWidth(priceLabel: string): number {
+  const estimated = 24 + priceLabel.length * 8;
+  return clamp(estimated, PRICE_BUBBLE_MIN_WIDTH, PRICE_BUBBLE_MAX_WIDTH);
+}
+
+function priceBubblesOverlap(a: PriceBubbleCandidate, b: PriceBubbleCandidate): boolean {
+  const overlapThresholdX = clamp(
+    (a.estimatedWidth + b.estimatedWidth) / 2 - PRICE_BUBBLE_OVERLAP_PADDING_X,
+    PRICE_BUBBLE_OVERLAP_MIN_X,
+    PRICE_BUBBLE_OVERLAP_MAX_X,
+  );
+  return (
+    Math.abs(a.projectedX - b.projectedX) <= overlapThresholdX &&
+    Math.abs(a.projectedY - b.projectedY) <= PRICE_BUBBLE_OVERLAP_Y
+  );
+}
+
+function buildPriceBubbleLayouts(
+  candidates: PriceBubbleCandidate[],
+  hoveredHomeId: string | null,
+): Map<string, PriceBubbleLayout> {
+  const groups: PriceBubbleCandidate[][] = [];
+  const sortedCandidates = [...candidates].sort(
+    (a, b) =>
+      a.projectedY - b.projectedY ||
+      a.projectedX - b.projectedX ||
+      a.home.id.localeCompare(b.home.id),
+  );
+
+  sortedCandidates.forEach((candidate) => {
+    const group = groups.find((members) =>
+      members.some((member) => priceBubblesOverlap(member, candidate)),
+    );
+    if (group) {
+      group.push(candidate);
+      return;
+    }
+    groups.push([candidate]);
+  });
+
+  const layouts = new Map<string, PriceBubbleLayout>();
+  groups.forEach((group) => {
+    const orderedMembers = [...group].sort(
+      (a, b) =>
+        a.projectedX - b.projectedX ||
+        a.projectedY - b.projectedY ||
+        a.home.id.localeCompare(b.home.id),
+    );
+    const center = (orderedMembers.length - 1) / 2;
+
+    orderedMembers.forEach((candidate, index) => {
+      const relativeIndex = index - center;
+      const offsetX = clamp(
+        relativeIndex * PRICE_BUBBLE_STACK_SPACING_X,
+        -PRICE_BUBBLE_STACK_MAX_OFFSET_X,
+        PRICE_BUBBLE_STACK_MAX_OFFSET_X,
+      );
+      const offsetY = -Math.min(
+        PRICE_BUBBLE_STACK_MAX_OFFSET_Y,
+        Math.abs(relativeIndex) * PRICE_BUBBLE_STACK_SPACING_Y,
+      );
+      const isActive = hoveredHomeId === candidate.home.id;
+
+      layouts.set(candidate.home.id, {
+        offset: [offsetX, offsetY],
+        zIndex: isActive ? 400 : 100 + index,
+      });
+    });
+  });
+
+  return layouts;
+}
+
 function getBuilderCommunityLine(
   home: PublicHome,
   builderMap: Record<string, BuilderProfileSummary>,
@@ -220,23 +431,56 @@ export default function ListingsMap({
   searchingThisArea,
   onViewportBoundsChange,
   onSearchThisArea,
+  renderMode,
   layerMode,
   onLayerModeChange,
 }: Props) {
   const router = useRouter();
+  const debugEnabled = useMemo(() => isMapDebugEnabled(), []);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const initialResultsFitDoneRef = useRef(false);
   const lastAppliedBoundsKeyRef = useRef("");
   const communityHoverPopupRef = useRef<mapboxgl.Popup | null>(null);
   const hoveredHomeIdRef = useRef<string | null>(hoveredHomeId);
+  const activeInventoryFeatureIdRef = useRef<string | null>(null);
   const inventoryPriceMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const priceBubbleVisibleRef = useRef(false);
+  const userNavigatedMapRef = useRef(false);
   const diagnosticsLogKeyRef = useRef("");
+  const debugStyleDataCountRef = useRef(0);
+  const debugSourceDataCountRef = useRef(0);
+  const debugResizeCountRef = useRef(0);
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
   const [layersReady, setLayersReady] = useState(false);
+  const [inventoryAutoRevealActive, setInventoryAutoRevealActive] = useState(false);
+  const [showDebugBadge, setShowDebugBadge] = useState(false);
+  const [debugStatus, setDebugStatus] = useState<MapDebugStatus>({
+    createCount: 0,
+    removeCount: 0,
+    mapCreated: false,
+    loadFired: false,
+    styleLoadFired: false,
+    idleFired: false,
+    canvasFound: false,
+    mapboxContainerFound: false,
+    controlContainerFound: false,
+    containerSize: "missing",
+    canvasSize: "missing",
+    lastError: null,
+  });
 
   const inventoryLayerEnabled = layerMode === "community+inventory";
+  const inventoryLayerVisible = inventoryLayerEnabled || inventoryAutoRevealActive;
+  const statusColors = useMemo(
+    () => ({
+      available: readRootColorVar("--map-available", "#5f7d5a"),
+      inventory: readRootColorVar("--map-inventory", "#d9b65d"),
+      comingSoon: readRootColorVar("--map-coming-soon", "#b8a89a"),
+      model: readRootColorVar("--map-model", "#b8d8ff"),
+    }),
+    [],
+  );
   const homesWithGeo = useMemo<MappableHome[]>(
     () =>
       homes.filter((home): home is MappableHome =>
@@ -277,11 +521,105 @@ export default function ListingsMap({
   const priceBubbleClasses = useMemo(
     () => ({
       base: styles.mapPriceBubble,
+      inner: styles.mapPriceBubbleInner,
       active: styles.mapPriceBubbleActive,
       muted: styles.mapPriceBubbleMuted,
     }),
     [],
   );
+  const debugLog = useMemo(
+    () => (label: string, details?: Record<string, unknown>) => {
+      if (!debugEnabled) return;
+      console.debug("[ListingsMapDebug]", label, details || {});
+    },
+    [debugEnabled],
+  );
+  const captureDomSnapshot = useMemo(
+    () => (label: string) => {
+      if (!debugEnabled || typeof window === "undefined") return;
+      const container = mapContainerRef.current;
+      const wrapper = container?.parentElement ?? null;
+      const canvas = container?.querySelector("canvas.mapboxgl-canvas") ?? null;
+      const mapboxContainer = container?.querySelector(".mapboxgl-canvas-container") ?? null;
+      const controlContainer = container?.querySelector(".mapboxgl-control-container") ?? null;
+      const wrapperStyle = wrapper ? window.getComputedStyle(wrapper) : null;
+      const containerStyle = container ? window.getComputedStyle(container) : null;
+      const snapshot = {
+        renderMode,
+        layerMode,
+        containerSize: formatElementSize(container),
+        canvasSize: formatElementSize(canvas),
+        canvasFound: Boolean(canvas),
+        mapboxContainerFound: Boolean(mapboxContainer),
+        controlContainerFound: Boolean(controlContainer),
+        wrapperOpacity: wrapperStyle?.opacity || "",
+        wrapperZIndex: wrapperStyle?.zIndex || "",
+        wrapperPointerEvents: wrapperStyle?.pointerEvents || "",
+        containerOpacity: containerStyle?.opacity || "",
+        containerZIndex: containerStyle?.zIndex || "",
+        containerPointerEvents: containerStyle?.pointerEvents || "",
+      };
+      setDebugStatus((prev) => ({
+        ...prev,
+        containerSize: snapshot.containerSize,
+        canvasSize: snapshot.canvasSize,
+        canvasFound: snapshot.canvasFound,
+        mapboxContainerFound: snapshot.mapboxContainerFound,
+        controlContainerFound: snapshot.controlContainerFound,
+      }));
+      debugLog(label, snapshot);
+    },
+    [debugEnabled, debugLog, layerMode, renderMode],
+  );
+
+  useEffect(() => {
+    if (debugEnabled) {
+      window.requestAnimationFrame(() => setShowDebugBadge(true));
+    }
+  }, [debugEnabled]);
+
+  useEffect(() => {
+    if (!debugEnabled) return;
+    debugLog("mount", {
+      renderMode,
+      layerMode,
+      tokenPresent: Boolean(MAPBOX_TOKEN),
+      styleUrl: MAPBOX_STYLE_URL,
+      homesCount: homes.length,
+      communitiesCount: communityPoints.length,
+    });
+    captureDomSnapshot("mount-dom");
+    return () => {
+      debugLog("unmount", {
+        renderMode,
+        layerMode,
+        mapExists: Boolean(mapRef.current),
+      });
+    };
+  }, [captureDomSnapshot, communityPoints.length, debugEnabled, debugLog, homes.length, layerMode, renderMode]);
+
+  useEffect(() => {
+    if (!debugEnabled) return;
+    debugLog("props", {
+      renderMode,
+      layerMode,
+      inventoryLayerEnabled,
+      inventoryLayerVisible,
+      homesWithGeo: homesWithGeo.length,
+      communitiesWithGeo: communitiesWithGeo.length,
+      appliedBounds: appliedBoundsKey || null,
+    });
+  }, [
+    appliedBoundsKey,
+    communitiesWithGeo.length,
+    debugEnabled,
+    debugLog,
+    homesWithGeo.length,
+    inventoryLayerEnabled,
+    inventoryLayerVisible,
+    layerMode,
+    renderMode,
+  ]);
 
   useEffect(() => {
     if (
@@ -325,6 +663,63 @@ export default function ListingsMap({
     });
   }, [homesById, hoveredHomeId, priceBubbleClasses]);
 
+  useEffect(() => {
+    if (!debugEnabled || typeof window === "undefined") return;
+    const preview = document.querySelector(`.${styles.mapSelectionCard}`) as HTMLElement | null;
+    if (activeHome) {
+      debugLog("preview-mount", {
+        homeId: activeHome.id,
+        pointerEvents: preview ? window.getComputedStyle(preview).pointerEvents : "missing",
+      });
+      return () => {
+        debugLog("preview-unmount", {
+          homeId: activeHome.id,
+        });
+      };
+    }
+    debugLog("preview-cleared", {
+      hoveredHomeId,
+    });
+  }, [activeHome, debugEnabled, debugLog, hoveredHomeId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !layersReady || !isMapDebugEnabled()) return;
+
+    let lastDragLogAt = 0;
+
+    const logSnapshot = (label: string) => {
+      logMarkerDragSnapshot(label, map, homesById, inventoryPriceMarkersRef.current);
+    };
+
+    const handleDragStart = () => {
+      lastDragLogAt = 0;
+      logSnapshot("dragstart");
+    };
+
+    const handleDrag = () => {
+      if (typeof window === "undefined") return;
+      const now = window.performance.now();
+      if (now - lastDragLogAt < MAP_DEBUG_DRAG_LOG_INTERVAL_MS) return;
+      lastDragLogAt = now;
+      logSnapshot("drag");
+    };
+
+    const handleDragEnd = () => {
+      logSnapshot("dragend");
+    };
+
+    map.on("dragstart", handleDragStart);
+    map.on("drag", handleDrag);
+    map.on("dragend", handleDragEnd);
+
+    return () => {
+      map.off("dragstart", handleDragStart);
+      map.off("drag", handleDrag);
+      map.off("dragend", handleDragEnd);
+    };
+  }, [homesById, layersReady]);
+
   const communityGeoJson = useMemo(
     () =>
       ({
@@ -355,6 +750,7 @@ export default function ListingsMap({
       ({
         type: "FeatureCollection",
         features: homesWithGeo.map((home) => ({
+          id: home.id,
           type: "Feature",
           geometry: {
             type: "Point",
@@ -363,28 +759,252 @@ export default function ListingsMap({
           properties: {
             homeId: home.id,
             status: markerStatusKey(home.status),
-            isActive: hoveredHomeId === home.id,
           },
         })),
       }) as GeoJSON.FeatureCollection<GeoJSON.Point>,
-    [homesWithGeo, hoveredHomeId],
+    [homesWithGeo],
   );
 
   useEffect(() => {
-    if (!MAPBOX_TOKEN || !mapContainerRef.current || typeof window === "undefined") {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const container = mapContainerRef.current;
+    if (!MAPBOX_TOKEN || !container) {
+      debugLog("map-create-skipped", {
+        tokenPresent: Boolean(MAPBOX_TOKEN),
+        hasContainer: Boolean(container),
+      });
       return;
     }
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
-    if (!mapRef.current) {
-      mapRef.current = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: "mapbox://styles/mapbox/streets-v12",
+    if (mapRef.current) {
+      debugLog("map-create-reused-existing-instance", {
+        mapExists: true,
+      });
+      captureDomSnapshot("map-create-reused-dom");
+      return;
+    }
+
+    try {
+      debugLog("map-create-start", {
+        tokenPresent: true,
+        styleUrl: MAPBOX_STYLE_URL,
+        renderMode,
+        layerMode,
+        containerSize: formatElementSize(container),
+      });
+      const map = new mapboxgl.Map({
+        container,
+        style: MAPBOX_STYLE_URL,
         center: DEFAULT_CENTER,
         zoom: 10,
       });
-      mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+      mapRef.current = map;
+      if (debugEnabled) {
+        setDebugMapInstance(map);
+      }
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      window.requestAnimationFrame(() => {
+        setDebugStatus((prev) => ({
+          ...prev,
+          createCount: prev.createCount + 1,
+          mapCreated: true,
+          lastError: null,
+        }));
+      });
+      captureDomSnapshot("map-create-success");
+    } catch (error) {
+      const message = formatDebugError(error);
+      window.requestAnimationFrame(() => {
+        setDebugStatus((prev) => ({
+          ...prev,
+          lastError: message,
+        }));
+      });
+      debugLog("map-create-error", {
+        message,
+        tokenPresent: true,
+        styleUrl: MAPBOX_STYLE_URL,
+        renderMode,
+        layerMode,
+      });
+      console.error("[ListingsMapDebug] map-create-error", error);
     }
+  }, [captureDomSnapshot, debugEnabled, debugLog, layerMode, renderMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !debugEnabled) return;
+
+    const handleLoad = () => {
+      setDebugStatus((prev) => ({ ...prev, loadFired: true }));
+      debugLog("event:load", {
+        styleLoaded: map.isStyleLoaded(),
+        center: map.getCenter().toArray(),
+        zoom: roundDebugValue(map.getZoom()),
+      });
+      captureDomSnapshot("event:load-dom");
+    };
+
+    const handleStyleLoad = () => {
+      setDebugStatus((prev) => ({ ...prev, styleLoadFired: true }));
+      debugLog("event:style.load", {
+        styleLoaded: map.isStyleLoaded(),
+      });
+      captureDomSnapshot("event:style.load-dom");
+    };
+
+    const handleIdle = () => {
+      setDebugStatus((prev) => ({ ...prev, idleFired: true }));
+      debugLog("event:idle", {
+        styleLoaded: map.isStyleLoaded(),
+        loaded: map.loaded(),
+      });
+      captureDomSnapshot("event:idle-dom");
+    };
+
+    const handleError = (event: mapboxgl.ErrorEvent) => {
+      const message = formatDebugError(event.error);
+      setDebugStatus((prev) => ({
+        ...prev,
+        lastError: message,
+      }));
+      debugLog("event:error", {
+        message,
+        error: event.error,
+      });
+      captureDomSnapshot("event:error-dom");
+    };
+
+    const handleStyleData = () => {
+      debugStyleDataCountRef.current += 1;
+      if (debugStyleDataCountRef.current > 6) return;
+      debugLog("event:styledata", {
+        count: debugStyleDataCountRef.current,
+        styleLoaded: map.isStyleLoaded(),
+      });
+    };
+
+    const handleSourceData = (event: mapboxgl.MapSourceDataEvent) => {
+      debugSourceDataCountRef.current += 1;
+      if (debugSourceDataCountRef.current > 10) return;
+      debugLog("event:sourcedata", {
+        count: debugSourceDataCountRef.current,
+        dataType: event.dataType,
+        sourceId: event.sourceId || "",
+        isSourceLoaded: event.isSourceLoaded || false,
+      });
+    };
+
+    map.on("load", handleLoad);
+    map.on("style.load", handleStyleLoad);
+    map.on("idle", handleIdle);
+    map.on("error", handleError);
+    map.on("styledata", handleStyleData);
+    map.on("sourcedata", handleSourceData);
+
+    debugLog("debug-event-listeners-attached", {
+      styleLoaded: map.isStyleLoaded(),
+      loaded: map.loaded(),
+    });
+    captureDomSnapshot("debug-event-listeners-attached-dom");
+
+    return () => {
+      map.off("load", handleLoad);
+      map.off("style.load", handleStyleLoad);
+      map.off("idle", handleIdle);
+      map.off("error", handleError);
+      map.off("styledata", handleStyleData);
+      map.off("sourcedata", handleSourceData);
+    };
+  }, [captureDomSnapshot, debugEnabled, debugLog]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !container || typeof window === "undefined") return;
+
+    const resizeMap = () => {
+      debugResizeCountRef.current += 1;
+      if (debugEnabled) {
+        setDebugStatus((prev) => ({
+          ...prev,
+          containerSize: formatElementSize(container),
+        }));
+        debugLog("resize", {
+          resizeCount: debugResizeCountRef.current,
+          containerSize: formatElementSize(container),
+        });
+      }
+      map.resize();
+      captureDomSnapshot("resize-dom");
+    };
+
+    resizeMap();
+    const raf = window.requestAnimationFrame(resizeMap);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => {
+        debugLog("resize-observer-fired", {
+          containerSize: formatElementSize(container),
+        });
+        resizeMap();
+      });
+      observer.observe(container);
+    }
+    window.addEventListener("resize", resizeMap);
+    map.once("load", resizeMap);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resizeMap);
+      observer?.disconnect();
+      map.off("load", resizeMap);
+    };
+  }, [captureDomSnapshot, debugEnabled, debugLog]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const syncInventoryAutoReveal = () => {
+      const zoom = map.getZoom();
+      setInventoryAutoRevealActive((current) => {
+        const next = current
+          ? zoom >= INVENTORY_AUTO_REVEAL_ZOOM - INVENTORY_AUTO_REVEAL_ZOOM_HYSTERESIS
+          : zoom >= INVENTORY_AUTO_REVEAL_ZOOM + INVENTORY_AUTO_REVEAL_ZOOM_HYSTERESIS;
+        return current === next ? current : next;
+      });
+    };
+
+    syncInventoryAutoReveal();
+    map.on("zoom", syncInventoryAutoReveal);
+    map.on("zoomend", syncInventoryAutoReveal);
+
+    return () => {
+      map.off("zoom", syncInventoryAutoReveal);
+      map.off("zoomend", syncInventoryAutoReveal);
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const markUserNavigation = () => {
+      userNavigatedMapRef.current = true;
+    };
+
+    map.on("dragstart", markUserNavigation);
+    map.on("zoomstart", markUserNavigation);
+
+    return () => {
+      map.off("dragstart", markUserNavigation);
+      map.off("zoomstart", markUserNavigation);
+    };
   }, []);
 
   useEffect(() => {
@@ -500,7 +1120,7 @@ export default function ListingsMap({
             "circle-stroke-width": 2,
           },
           layout: {
-            visibility: inventoryLayerEnabled ? "visible" : "none",
+            visibility: inventoryLayerVisible ? "visible" : "none",
           },
         });
       }
@@ -514,7 +1134,7 @@ export default function ListingsMap({
             "text-field": ["get", "point_count_abbreviated"],
             "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
             "text-size": 11,
-            visibility: inventoryLayerEnabled ? "visible" : "none",
+            visibility: inventoryLayerVisible ? "visible" : "none",
           },
           paint: {
             "text-color": "#ffffff",
@@ -532,16 +1152,16 @@ export default function ListingsMap({
               "match",
               ["get", "status"],
               "inventory",
-              "#d9b555",
+              statusColors.inventory,
               "comingSoon",
-              "#d58f5f",
+              statusColors.comingSoon,
               "model",
-              "#7db2e8",
-              "#5f7d5a",
+              statusColors.model,
+              statusColors.available,
             ],
             "circle-radius": [
               "case",
-              ["boolean", ["get", "isActive"], false],
+              ["boolean", ["feature-state", "active"], false],
               9,
               6,
             ],
@@ -567,7 +1187,7 @@ export default function ListingsMap({
             ],
           },
           layout: {
-            visibility: inventoryLayerEnabled ? "visible" : "none",
+            visibility: inventoryLayerVisible ? "visible" : "none",
           },
         });
       }
@@ -583,7 +1203,7 @@ export default function ListingsMap({
     return () => {
       map.off("load", initSourcesAndLayers);
     };
-  }, [communityGeoJson, inventoryGeoJson, inventoryLayerEnabled]);
+  }, [communityGeoJson, inventoryGeoJson, inventoryLayerVisible, statusColors]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -599,14 +1219,55 @@ export default function ListingsMap({
     if (!map || !layersReady) return;
     const source = map.getSource(INVENTORY_SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
     if (source) {
+      debugLog("inventory-source-update", {
+        featureCount: homesWithGeo.length,
+      });
       source.setData(inventoryGeoJson);
     }
-  }, [inventoryGeoJson, layersReady]);
+  }, [debugLog, homesWithGeo.length, inventoryGeoJson, layersReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !layersReady || !map.getSource(INVENTORY_SOURCE_ID)) return;
+
+    const previousHomeId = activeInventoryFeatureIdRef.current;
+    if (previousHomeId && previousHomeId !== hoveredHomeId) {
+      map.setFeatureState(
+        {
+          source: INVENTORY_SOURCE_ID,
+          id: previousHomeId,
+        },
+        { active: false },
+      );
+      debugLog("inventory-feature-state", {
+        homeId: previousHomeId,
+        active: false,
+      });
+      activeInventoryFeatureIdRef.current = null;
+    }
+
+    if (!hoveredHomeId || !homesById.has(hoveredHomeId)) {
+      return;
+    }
+
+    map.setFeatureState(
+      {
+        source: INVENTORY_SOURCE_ID,
+        id: hoveredHomeId,
+      },
+      { active: true },
+    );
+    activeInventoryFeatureIdRef.current = hoveredHomeId;
+    debugLog("inventory-feature-state", {
+      homeId: hoveredHomeId,
+      active: true,
+    });
+  }, [debugLog, homesById, hoveredHomeId, layersReady]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !layersReady) return;
-    const visibility = inventoryLayerEnabled ? "visible" : "none";
+    const visibility = inventoryLayerVisible ? "visible" : "none";
     [
       INVENTORY_CLUSTER_LAYER_ID,
       INVENTORY_CLUSTER_COUNT_LAYER_ID,
@@ -618,10 +1279,10 @@ export default function ListingsMap({
         }
       },
     );
-    if (!inventoryLayerEnabled) {
+    if (!inventoryLayerVisible) {
       onHoverHome(null);
     }
-  }, [inventoryLayerEnabled, layersReady, onHoverHome]);
+  }, [inventoryLayerVisible, layersReady, onHoverHome]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -694,7 +1355,8 @@ export default function ListingsMap({
       const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
       const name = typeof feature.properties?.name === "string" ? feature.properties.name : "Community";
       const inventoryCount = parseFeatureNumber(feature.properties?.inventoryCount) ?? 0;
-      const html = `<div class="brz-map-tooltip"><strong>${escapeHtml(name)}</strong><div>${inventoryCount} inventory</div></div>`;
+      const homeLabel = inventoryCount === 1 ? "Quick Move-In home" : "Quick Move-In homes";
+      const html = `<div class="brz-map-tooltip"><strong>${escapeHtml(name)}</strong><div>${inventoryCount} ${homeLabel}</div></div>`;
       if (!communityHoverPopupRef.current) {
         communityHoverPopupRef.current = new mapboxgl.Popup({
           closeButton: false,
@@ -719,11 +1381,19 @@ export default function ListingsMap({
       const homeId = typeof feature?.properties?.homeId === "string" ? feature.properties.homeId : "";
       if (!homeId) return;
       map.getCanvas().style.cursor = "pointer";
+      debugLog("hover-enter", {
+        source: "inventory-layer",
+        homeId,
+      });
       onHoverHome(homeId);
     };
 
     const onInventoryPinLeave = () => {
       map.getCanvas().style.cursor = "";
+      debugLog("hover-leave", {
+        source: "inventory-layer",
+        homeId: hoveredHomeIdRef.current,
+      });
       onHoverHome(null);
     };
 
@@ -787,7 +1457,7 @@ export default function ListingsMap({
     };
 
     const syncPriceBubbles = () => {
-      if (!inventoryLayerEnabled || !shouldShowPriceBubbles()) {
+      if (!inventoryLayerVisible || !shouldShowPriceBubbles()) {
         clearMarkers();
         return;
       }
@@ -799,20 +1469,34 @@ export default function ListingsMap({
       }
 
       const nextVisibleIds = new Set<string>();
-      let renderedCount = 0;
+      const visibleCandidates: PriceBubbleCandidate[] = [];
 
       for (const home of homesWithGeo) {
-        if (renderedCount >= MAX_PRICE_BUBBLES) break;
+        if (visibleCandidates.length >= MAX_PRICE_BUBBLES) break;
         if (!bounds.contains([home.lng, home.lat])) continue;
 
         const priceLabel = formatPriceBubbleLabel(home.price);
         if (!priceLabel) continue;
 
-        renderedCount += 1;
+        const projected = map.project([home.lng, home.lat]);
+        visibleCandidates.push({
+          home,
+          priceLabel,
+          projectedX: projected.x,
+          projectedY: projected.y,
+          estimatedWidth: estimatePriceBubbleWidth(priceLabel),
+        });
+      }
+
+      const bubbleLayouts = buildPriceBubbleLayouts(visibleCandidates, hoveredHomeIdRef.current);
+
+      for (const candidate of visibleCandidates) {
+        const { home, priceLabel } = candidate;
         nextVisibleIds.add(home.id);
 
         const ariaLabel = `Open listing at ${formatAddress(home)} priced ${priceLabel}`;
         const isActive = hoveredHomeIdRef.current === home.id;
+        const layout = bubbleLayouts.get(home.id);
         const existing = markersById.get(home.id);
 
         if (!existing) {
@@ -829,36 +1513,62 @@ export default function ListingsMap({
             router.push(`/listing/${home.id}`);
           });
           element.addEventListener("mouseenter", () => {
+            debugLog("hover-enter", {
+              source: "price-bubble-marker",
+              homeId: home.id,
+            });
             onHoverHome(home.id);
           });
           element.addEventListener("mouseleave", () => {
+            debugLog("hover-leave", {
+              source: "price-bubble-marker",
+              homeId: home.id,
+            });
             onHoverHome(null);
           });
 
           const marker = new mapboxgl.Marker({
             element,
             anchor: "bottom",
+            offset: layout?.offset || [0, 0],
           })
             .setLngLat([home.lng, home.lat])
             .addTo(map);
 
+          element.style.zIndex = String(layout?.zIndex || (isActive ? 400 : 100));
           markersById.set(home.id, marker);
+          debugLog("marker-created", {
+            homeId: home.id,
+          });
           continue;
         }
 
-        existing.setLngLat([home.lng, home.lat]);
+        const markerLngLat = existing.getLngLat();
+        if (
+          Math.abs(markerLngLat.lng - home.lng) > 0.0000001 ||
+          Math.abs(markerLngLat.lat - home.lat) > 0.0000001
+        ) {
+          existing.setLngLat([home.lng, home.lat]);
+        }
+        existing.setOffset(layout?.offset || [0, 0]);
         updatePriceBubbleMarkerElement(existing.getElement() as HTMLButtonElement, {
           classes: priceBubbleClasses,
           priceLabel,
           isActive,
           ariaLabel,
         });
+        (existing.getElement() as HTMLButtonElement).style.zIndex = String(
+          layout?.zIndex || (isActive ? 400 : 100),
+        );
       }
 
       markersById.forEach((marker, homeId) => {
         if (nextVisibleIds.has(homeId)) return;
         marker.remove();
         markersById.delete(homeId);
+        debugLog("marker-removed", {
+          homeId,
+        });
       });
     };
 
@@ -893,7 +1603,7 @@ export default function ListingsMap({
     };
   }, [
     homesWithGeo,
-    inventoryLayerEnabled,
+    inventoryLayerVisible,
     layersReady,
     onHoverHome,
     priceBubbleClasses,
@@ -926,14 +1636,19 @@ export default function ListingsMap({
     if (appliedBounds && appliedBoundsKey !== lastAppliedBoundsKeyRef.current) {
       lastAppliedBoundsKeyRef.current = appliedBoundsKey;
       initialResultsFitDoneRef.current = true;
+      // External bounds update (URL or Search this area) becomes the new sticky baseline.
+      userNavigatedMapRef.current = false;
       const mapBounds = map.getBounds();
       if (!mapBounds) return;
       const currentBounds = toMapBounds(mapBounds);
       if (!areBoundsClose(currentBounds, appliedBounds)) {
-        map.fitBounds(toMapboxBounds(appliedBounds), { padding: 52, maxZoom: 13, duration: 500 });
+        map.fitBounds(toMapboxBounds(appliedBounds), { padding: 52, duration: 500 });
       }
       return;
     }
+
+    // After a user pan/zoom, keep the viewport where they moved it until a new explicit bounds apply.
+    if (userNavigatedMapRef.current) return;
 
     if (appliedBounds) return;
     lastAppliedBoundsKeyRef.current = "";
@@ -974,14 +1689,23 @@ export default function ListingsMap({
 
   useEffect(() => {
     return () => {
+      if (debugEnabled) {
+        debugLog("map-remove", {
+          mapExists: Boolean(mapRef.current),
+        });
+      }
       communityHoverPopupRef.current?.remove();
       communityHoverPopupRef.current = null;
       if (mapRef.current) {
+        setDebugStatus((prev) => ({
+          ...prev,
+          removeCount: prev.removeCount + 1,
+        }));
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [debugEnabled, debugLog]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -992,8 +1716,30 @@ export default function ListingsMap({
   }
 
   return (
-    <div className={styles.mapModeWrapper} onMouseLeave={() => onHoverHome(null)}>
+    <div
+      className={styles.mapModeWrapper}
+      onMouseLeave={() => {
+        debugLog("hover-leave", {
+          source: "map-wrapper",
+          homeId: hoveredHomeIdRef.current,
+        });
+        onHoverHome(null);
+      }}
+    >
       <div ref={mapContainerRef} className={styles.mapModeCanvas} />
+      {showDebugBadge ? (
+        <div className={styles.mapDebugBadge} aria-live="polite">
+          <p>created: {debugStatus.mapCreated ? "yes" : "no"}</p>
+          <p>load: {debugStatus.loadFired ? "yes" : "no"}</p>
+          <p>style: {debugStatus.styleLoadFired ? "yes" : "no"}</p>
+          <p>idle: {debugStatus.idleFired ? "yes" : "no"}</p>
+          <p>canvas: {debugStatus.canvasFound ? "yes" : "no"}</p>
+          <p>controls: {debugStatus.controlContainerFound ? "yes" : "no"}</p>
+          <p>container: {debugStatus.containerSize}</p>
+          <p>canvasSize: {debugStatus.canvasSize}</p>
+          <p>error: {debugStatus.lastError || "none"}</p>
+        </div>
+      ) : null}
       <div className={styles.mapLayerControl} role="group" aria-label="Map layers">
         <button type="button" className={`${styles.mapLayerBtn} ${styles.mapLayerBtnActive}`} aria-pressed>
           Communities
@@ -1001,14 +1747,14 @@ export default function ListingsMap({
         <button
           type="button"
           className={`${styles.mapLayerBtn} ${
-            inventoryLayerEnabled ? styles.mapLayerBtnActive : ""
+            inventoryLayerVisible ? styles.mapLayerBtnActive : ""
           }`}
-          aria-pressed={inventoryLayerEnabled}
+          aria-pressed={inventoryLayerVisible}
           onClick={() =>
             onLayerModeChange(inventoryLayerEnabled ? "community" : "community+inventory")
           }
         >
-          Inventory
+          Quick Move-In
         </button>
       </div>
       {hasUnappliedMapMove ? (
@@ -1044,7 +1790,7 @@ export default function ListingsMap({
           <div className={styles.mapCommunityStats}>
             <p>Builders: {selectedCommunity.builderCount ?? "—"}</p>
             <p>Plans: {selectedCommunity.planCount ?? "—"}</p>
-            <p>Inventory: {selectedCommunity.inventoryCount}</p>
+            <p>Quick Move-In Homes: {selectedCommunity.inventoryCount}</p>
             <p>
               Product types:{" "}
               {selectedCommunity.productTypes.length
@@ -1135,3 +1881,4 @@ export default function ListingsMap({
     </div>
   );
 }
+

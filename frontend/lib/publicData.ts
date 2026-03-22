@@ -357,18 +357,25 @@ function uniqueQueryValues(values: Array<string | ObjectId>): Array<string | Obj
 
 function normalizeBuilderProfile(doc: WithId<Document>): BuilderProfileRecord {
   const rawServiceAreas = (doc as { serviceAreas?: unknown }).serviceAreas;
+  const website =
+    (doc as { website?: string }).website ||
+    (doc as { websiteUrl?: string }).websiteUrl ||
+    (doc as { url?: string }).url ||
+    ((doc as { branding?: { website?: string; websiteUrl?: string } }).branding?.websiteUrl ??
+      (doc as { branding?: { website?: string; websiteUrl?: string } }).branding?.website) ||
+    ((doc as { company?: { website?: string; websiteUrl?: string } }).company?.websiteUrl ??
+      (doc as { company?: { website?: string; websiteUrl?: string } }).company?.website) ||
+    ((doc as { profile?: { website?: string; websiteUrl?: string } }).profile?.websiteUrl ??
+      (doc as { profile?: { website?: string; websiteUrl?: string } }).profile?.website);
+
   return {
     id: stringifyOptionalId(doc._id),
     companyId: stringifyOptionalId((doc as { companyId?: unknown }).companyId),
     builderName: (doc as { builderName?: string }).builderName,
     builderSlug: (doc as { builderSlug?: string }).builderSlug || (doc as { slug?: string }).slug,
     description: (doc as { description?: string }).description,
-    website:
-      (doc as { website?: string }).website ||
-      (doc as { websiteUrl?: string }).websiteUrl,
-    websiteUrl:
-      (doc as { websiteUrl?: string }).websiteUrl ||
-      (doc as { website?: string }).website,
+    website,
+    websiteUrl: website,
     logoUrl: (doc as { logoUrl?: string }).logoUrl,
     heroImageUrl: resolveAssetUrl((doc as { heroImageUrl?: string }).heroImageUrl),
     coverImageUrl: resolveAssetUrl((doc as { coverImageUrl?: string }).coverImageUrl),

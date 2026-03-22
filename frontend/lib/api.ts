@@ -6,8 +6,47 @@ import type {
   WorkspaceSubjectType,
 } from "./workspace/types";
 
-const API_BASE =
-  (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
+function normalizeApiBase(rawValue: string): string {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return "";
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/\/$/, "");
+  }
+
+  if (trimmed.startsWith("//")) {
+    if (typeof window !== "undefined") {
+      return `${window.location.protocol}${trimmed}`.replace(/\/$/, "");
+    }
+    return `https:${trimmed}`.replace(/\/$/, "");
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed.replace(/\/$/, "");
+  }
+
+  const isLocalHost = /^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(trimmed);
+  return `${isLocalHost ? "http" : "https"}://${trimmed}`.replace(/\/$/, "");
+}
+
+function resolveApiBase(): string {
+  const configuredBase = normalizeApiBase(process.env.NEXT_PUBLIC_API_BASE_URL || "");
+  if (configuredBase) {
+    return configuredBase;
+  }
+
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:3001";
+    }
+    return "";
+  }
+
+  return process.env.NODE_ENV === "development" ? "http://localhost:3001" : "";
+}
+
+const API_BASE = resolveApiBase();
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

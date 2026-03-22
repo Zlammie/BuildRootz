@@ -49,7 +49,7 @@
 
 .topGrid {
   display: grid;
-  grid-template-columns: 2.3fr 1fr;
+  grid-template-columns: 1.78fr 1.22fr;
   gap: 16px;
 }
 
@@ -59,6 +59,20 @@
   border-radius: 14px;
   box-shadow: var(--shadow);
   padding: 16px;
+}
+
+.mapCard {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+
+.overviewCard {
+  display: grid;
+  align-content: start;
+}
+
+.overviewHub {
+  gap: 18px;
 }
 
 .cardTitle {
@@ -72,36 +86,175 @@
   font-size: 14px;
 }
 
-.overviewGrid {
-  margin-top: 14px;
+.secondaryMetricsGrid {
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  padding-bottom: 10px;
+}
+
+.primaryMetricsGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  padding-top: 6px;
 }
 
 .overviewStat {
   border: 1px solid var(--border);
   background: #fdfbf7;
   border-radius: 10px;
-  padding: 10px;
+  padding: 12px 13px;
+  min-height: 92px;
+  display: grid;
+  align-content: start;
+}
+
+.overviewStatCompact {
+  padding: 8px 10px;
+  min-height: 58px;
+  background: #fcfaf6;
+}
+
+.overviewStatPrimary {
+  padding: 15px 16px 14px;
+  min-height: 92px;
+  place-items: center;
+  text-align: center;
+  background: linear-gradient(180deg, #fdfbf7, #f7f1e7);
+}
+
+.overviewStatPrimary .statLabel {
+  font-size: 12px;
+}
+
+.overviewStatPrimary .statValue {
+  margin-top: 8px;
+  font-size: 21px;
+}
+
+.overviewStatCompact .statLabel {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.overviewStatCompact .statValue {
+  margin-top: 4px;
+  font-size: 13px;
 }
 
 .statLabel {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
 }
 
 .statValue {
-  margin-top: 4px;
+  margin-top: 8px;
   font-weight: 800;
   color: var(--text);
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.overviewSupportGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+
+.overviewSection {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #ece3d7;
+}
+
+.overviewSectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.overviewSectionTitle {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.overviewSectionSub,
+.overviewSectionMeta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lotSizeChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.lotSizeChip,
+.lotSizeChipMuted {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #d7cab6;
+  background: #f7f2e8;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.lotSizeChipMuted {
+  color: var(--muted);
+  font-weight: 600;
+  background: #faf6ef;
+}
+
+.feesCompactGrid {
+  display: grid;
+  gap: 10px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feeItem {
+  min-width: 0;
+}
+
+.feeLabel {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.feeValue {
+  margin-top: 5px;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .mapBox {
   margin-top: 12px;
-  height: 260px;
+  height: auto;
+  min-height: 320px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: linear-gradient(135deg, #e0d8cc, #c7b6a3);
@@ -109,16 +262,43 @@
   overflow: hidden;
 }
 
-.mapBox::after {
-  content: "Map placeholder";
+.mapCanvas {
+  width: 100%;
+  height: 100%;
+}
+
+.mapFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.communityMapMarker {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--rootz-brown);
+  border: 3px solid #fff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.communityMapMarker::after {
+  content: "";
   position: absolute;
-  right: 12px;
-  bottom: 12px;
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  font-size: 12px;
-  padding: 6px 9px;
-  border-radius: 8px;
+  left: 50%;
+  bottom: -7px;
+  width: 10px;
+  height: 10px;
+  background: var(--rootz-brown);
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
+  z-index: -1;
 }
 
 .section {
@@ -544,6 +724,34 @@
   padding: 8px 10px;
 }
 
+.schoolGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.schoolItem {
+  border: 1px solid #e8dfd2;
+  border-radius: 10px;
+  background: #fcfaf5;
+  padding: 12px;
+  min-width: 0;
+}
+
+.schoolLabel {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.schoolValue {
+  margin-top: 6px;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -553,7 +761,41 @@
     grid-template-columns: 1fr;
   }
 
+  .overviewGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .secondaryMetricsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .primaryMetricsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .overviewSupportGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .feesCompactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .schoolGrid {
+    grid-template-columns: 1fr;
+  }
+
   .inventoryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .secondaryMetricsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .primaryMetricsGrid {
     grid-template-columns: 1fr;
   }
 }

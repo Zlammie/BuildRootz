@@ -95,6 +95,27 @@ function formatHoa(
   return DASH;
 }
 
+function normalizeFeeCadence(value?: string | null): string | null {
+  if (!value || typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes("month")) return "/mo";
+  if (normalized.includes("year") || normalized.includes("annual")) return "/yr";
+  return null;
+}
+
+function formatFeeWithCadence(amount: number | null | undefined, cadenceValue?: string | null): string {
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return DASH;
+  const cadence = normalizeFeeCadence(cadenceValue);
+  return `${priceFormatter.format(amount)}${cadence || ""}`;
+}
+
+function formatPercentFromDecimal(value: number | null | undefined): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const percent = Number((value * 100).toFixed(2));
+  return `${percent}%`;
+}
+
 function pidMudChipLabel(
   pidMud?: { hasPid?: boolean | null; hasMud?: boolean | null } | null,
 ): string | null {
@@ -149,6 +170,25 @@ function displayCommunityModelAddress(community: PublicCommunity) {
     .filter(Boolean)
     .join(", ");
   return addressLine || null;
+}
+
+function communityMatchesHome(community: PublicCommunity, home: PublicHome): boolean {
+  const communityTokens = new Set(
+    [
+      cleanString(community.id),
+      cleanString(community.keepupCommunityId),
+      cleanString(community.slug),
+    ].filter(Boolean),
+  );
+
+  const homeTokens = [
+    cleanString(home.publicCommunityId),
+    cleanString(home.keepupCommunityId),
+    cleanString(home.communityId),
+    cleanString(home.communitySlug),
+  ].filter(Boolean);
+
+  return homeTokens.some((token) => communityTokens.has(token));
 }
 
 function buildCommunityHref(community: PublicCommunity, builderSlug?: string): string {
@@ -236,6 +276,7 @@ export default function BuilderTabs({
 
   const [activeTab, setActiveTab] = useState<"listings" | "communities" | "floorplans">(defaultTab);
   const [expandedCommunity, setExpandedCommunity] = useState<Record<string, boolean>>({});
+  const [expandedCommunityListings, setExpandedCommunityListings] = useState<Record<string, boolean>>({});
   const [homePlanFilter, setHomePlanFilter] = useState<BuilderFloorPlan | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
 
@@ -381,6 +422,12 @@ export default function BuilderTabs({
                 const details = community.communityDetails;
                 const communityId = community.id;
                 const isExpanded = Boolean(expandedCommunity[communityId]);
+                const isListingsExpanded = Boolean(expandedCommunityListings[communityId]);
+                const communityHomes = homes.filter((home) => communityMatchesHome(community, home));
+                const communityQueueSubjectId =
+                  cleanString(community.id) ||
+                  cleanString(community.slug) ||
+                  cleanString(community.keepupCommunityId);
                 const summaryTotalLots =
                   typeof details?.totalLots === "number" ? `${details.totalLots.toLocaleString()} lots` : null;
                 const summaryHoa = hasValue(details?.hoaAmount) || hasValue(community.hoa)
@@ -390,6 +437,11 @@ export default function BuilderTabs({
                 const summarySchools = schoolsChipLabel(details?.schools);
                 const showRealtorIncentives = Boolean(details?.realtorIncentives?.enabled);
                 const communityHref = buildCommunityHref(community, builderSlug);
+                const pidFeeValue = formatFeeWithCadence(community.pidFee, community.pidFeeFrequency);
+                const mudValue =
+                  typeof community.mudFeeAmount === "number" && Number.isFinite(community.mudFeeAmount) && community.mudFeeAmount > 0
+                    ? priceFormatter.format(community.mudFeeAmount)
+                    : formatPercentFromDecimal(community.mudTaxRate) || DASH;
 
                 return (
                   <article key={community.id} className={styles.communityCard}>
@@ -435,31 +487,82 @@ export default function BuilderTabs({
                       </div>
                     </Link>
                     <div className={styles.communityCardFooter}>
-                      <Link href={communityHref} className={styles.viewDetailsLink}>
-                        View details
-                      </Link>
-                      <Link
-                        href={buildListingsUrl({
-                          publicCommunityId: cleanString(community.id) || undefined,
-                          companyId: cleanString(builderCompanyId) || undefined,
-                        })}
-                        className={styles.viewListingsLink}
-                      >
-                        View listings
-                      </Link>
-                      <button
-                        type="button"
-                        className={styles.communityDetailsBtn}
-                        onClick={() =>
-                          setExpandedCommunity((prev) => ({
-                            ...prev,
-                            [communityId]: !prev[communityId],
-                          }))
-                        }
-                      >
-                        {isExpanded ? "Hide info" : "More info"}
-                      </button>
+                      <div className={styles.communityCardActions}>
+                        <button
+                          type="button"
+                          className={styles.communityDetailsBtn}
+                          onClick={() =>
+                            setExpandedCommunity((prev) => ({
+                              ...prev,
+                              [communityId]: !prev[communityId],
+                            }))
+                          }
+                        >
+                          {isExpanded ? "Hide info" : "More info"}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.viewListingsLink}
+                          onClick={() =>
+                            setExpandedCommunityListings((prev) => ({
+                              ...prev,
+                              [communityId]: !prev[communityId],
+                            }))
+                          }
+                        >
+                          {isListingsExpanded ? "Hide listings" : "View listings"}
+                        </button>
+                      </div>
+                      {communityQueueSubjectId ? (
+                        <WorkspaceQueueButton
+                          subjectType="community"
+                          subjectId={communityQueueSubjectId}
+                          title={cleanString(community.name) || "Community"}
+                          subtitle={displayCommunityCity(community)}
+                          contextRefs={{
+                            communityId: cleanString(community.id) || undefined,
+                            ...(cleanString(builderCompanyId)
+                              ? { builderId: cleanString(builderCompanyId) }
+                              : {}),
+                          }}
+                          className={styles.communityQueueBtn}
+                          activeClassName={styles.communityQueueBtnActive}
+                          queuedLabel="In Queue"
+                          idleLabel="Queue"
+                        />
+                      ) : null}
                     </div>
+                    {isListingsExpanded && (
+                      <div className={styles.communityListingsPanel}>
+                        <h4 className={styles.detailsHeading}>Listings in this community</h4>
+                        {communityHomes.length > 0 ? (
+                          <div className={styles.communityListingsGrid}>
+                            {communityHomes.map((home) => (
+                              <ListingCard
+                                key={home.id}
+                                home={home}
+                                variant="compact"
+                                showSaveButton
+                                community={{
+                                  name: cleanString(community.name) || undefined,
+                                  slug: cleanString(community.slug) || undefined,
+                                  city: cleanString(community.city) || undefined,
+                                  state: cleanString(community.state) || undefined,
+                                  mapImage: cleanString(community.mapImage) || undefined,
+                                }}
+                                builder={{
+                                  builderName: builderName || home.builder || null,
+                                  builderSlug: cleanString(builderSlug) || null,
+                                  logoUrl: null,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={styles.detailNote}>No published listings are available for this community yet.</p>
+                        )}
+                      </div>
+                    )}
                     {isExpanded && (
                       <div className={styles.communityDetails}>
                         <section className={styles.detailsSection}>
@@ -486,6 +589,18 @@ export default function BuilderTabs({
                             <div className={styles.detailItem}>
                               <span className={styles.detailLabel}>PID / MUD</span>
                               <span className={styles.detailValue}>{pidMudChipLabel(details?.pidMud) || DASH}</span>
+                            </div>
+                            <div className={styles.detailItem}>
+                              <span className={styles.detailLabel}>PID fee</span>
+                              <span className={styles.detailValue}>{pidFeeValue}</span>
+                            </div>
+                            <div className={styles.detailItem}>
+                              <span className={styles.detailLabel}>
+                                {typeof community.mudFeeAmount === "number" && Number.isFinite(community.mudFeeAmount) && community.mudFeeAmount > 0
+                                  ? "MUD fee"
+                                  : "MUD rate"}
+                              </span>
+                              <span className={styles.detailValue}>{mudValue}</span>
                             </div>
                           </div>
                           {hasValue(details?.pidMud?.notes) && (

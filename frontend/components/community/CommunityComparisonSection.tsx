@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { getStatusBadgeFromValue } from "../../lib/listingFormatters";
 import type { BuilderCardData } from "./types";
 import styles from "./CommunityComparisonSection.module.css";
 
@@ -85,14 +86,9 @@ function toAddress(row: BuilderCardData["inventoryHomes"][number]): string {
 }
 
 function toStatusLabel(status: unknown): string {
-  const normalized = cleanText(status).toLowerCase();
+  const normalized = cleanText(status);
   if (!normalized) return "Unknown";
-  if (normalized.includes("quick move") || normalized.includes("spec")) return "Quick Move-In";
-  if (normalized.includes("inventory")) return "Inventory";
-  if (normalized.includes("model")) return "Model";
-  if (normalized.includes("coming")) return "Coming soon";
-  if (normalized.includes("available")) return "Available";
-  return status ? cleanText(status) : "Unknown";
+  return getStatusBadgeFromValue(normalized).text;
 }
 
 function toMoveInDate(home: BuilderCardData["inventoryHomes"][number]): string | null {

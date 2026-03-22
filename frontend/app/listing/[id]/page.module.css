@@ -389,6 +389,21 @@
   font-weight: 600;
 }
 
+.summaryLink {
+  color: var(--rootz-brown);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.summaryLink:hover {
+  text-decoration: underline;
+}
+
+.summaryDivider {
+  margin: 0 6px;
+  color: var(--muted);
+}
+
 .overviewIncentives {
   margin-top: 14px;
   display: grid;
@@ -461,6 +476,45 @@
   border: 0;
 }
 
+.mapCanvas {
+  width: 100%;
+  height: 100%;
+}
+
+.mapFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.listingMapMarker {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--rootz-brown);
+  border: 3px solid #fff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.listingMapMarker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 10px;
+  height: 10px;
+  background: var(--rootz-brown);
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
+  z-index: -1;
+}
+
 .floorPlan {
   background: repeating-linear-gradient(
       -45deg,
@@ -526,8 +580,143 @@
   align-items: center;
 }
 
+.contactHero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.contactBrandMark {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  border: 1px solid rgba(95, 125, 90, 0.16);
+  background: #f7f4ee;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.contactBrandImage,
+.contactBrandFallback {
+  width: 100%;
+  height: 100%;
+}
+
+.contactBrandImage {
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: #fff;
+}
+
+.contactBrandFallback {
+  display: grid;
+  place-items: center;
+  color: var(--rootz-brown);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: 18px;
+}
+
+.contactHeroCopy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.contactHeroCopy h3 {
+  margin: 0;
+}
+
+.contactBuilderText,
+.contactBuilderLink {
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.contactBuilderLink:hover {
+  color: var(--rootz-brown);
+  text-decoration: underline;
+}
+
+.contactCommunityText,
+.contactCommunityLink {
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.contactCommunityLink:hover {
+  color: var(--rootz-brown);
+  text-decoration: underline;
+}
+
+.contactCard {
+  display: grid;
+  gap: 12px;
+}
+
+.contactRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.contactIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(95, 125, 90, 0.16);
+  background: #f7f4ee;
+  color: var(--rootz-brown);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.contactIcon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.contactMeta {
+  min-width: 0;
+}
+
+.contactLabel {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.contactValue,
+.contactValueLink {
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.contactValueLink:hover {
+  color: var(--rootz-brown);
+  text-decoration: underline;
+}
+
 .salesActions {
-  margin-top: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
 
 .groupSection {
@@ -586,6 +775,68 @@
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.feesSection {
+  display: grid;
+  gap: 14px;
+  height: 100%;
+  align-content: start;
+}
+
+.feesHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.feesHeader h3 {
+  margin: 0;
+}
+
+.feesToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.feesToggleBtn {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.feesToggleBtnActive {
+  background: var(--rootz-green-soft);
+}
+
+.feesColumns {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  align-content: start;
+}
+
+.feesColumn {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  min-width: 0;
+}
+
+.feesMetric {
+  min-width: 0;
+}
+
+.feesMetricSpacer {
+  min-height: 56px;
 }
 
 .specLabel {
@@ -647,6 +898,20 @@
   .relatedHeader {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .feesHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .feesColumns {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .contactHero {
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 }
 

@@ -497,26 +497,32 @@
   flex-wrap: wrap;
 }
 
+.communityCardActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .viewListingsLink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
   color: var(--rootz-brown);
   font-weight: 600;
-  text-decoration: underline;
-}
-
-.viewDetailsLink {
-  display: inline-block;
-  color: var(--text);
-  font-weight: 600;
-  text-decoration: underline;
-}
-
-.viewDetailsLink:hover {
-  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
 .viewListingsLink:hover {
   color: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-1px);
 }
 
 .viewPlanListingsLink {
@@ -551,6 +557,36 @@
   transform: translateY(-1px);
 }
 
+.communityQueueBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.communityQueueBtn:hover:not(:disabled) {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.communityQueueBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.communityQueueBtnActive {
+  background: #f6e7d8;
+  border-color: var(--rootz-brown);
+  color: var(--rootz-brown);
+}
+
 .communityMedia {
   min-height: 160px;
   background: linear-gradient(140deg, #dcd2c3, #c8b49f);
@@ -581,6 +617,18 @@
   display: grid;
   gap: 12px;
   padding: 0 16px 16px;
+}
+
+.communityListingsPanel {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.communityListingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
 }
 
 .detailsSection {

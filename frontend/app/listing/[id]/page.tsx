@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cache } from "react";
+import { Fragment, cache } from "react";
 import { notFound } from "next/navigation";
 import ListingCard from "../../../components/ListingCard";
 import NavBar from "../../../components/NavBar";
@@ -33,9 +33,11 @@ import {
 import { computeEffectivePromos } from "../../../../shared/promo";
 import { buildListingLocationLine } from "../../../../shared/listingLocation";
 import ListingGallery from "./ListingGallery";
+import ListingLocationMap from "./ListingLocationMap";
 import SaveHomeButton from "./SaveHomeButton";
 import WorkspaceQueueButton from "../../../components/workspace/WorkspaceQueueButton";
 import BuyerWorkspaceSidebar from "../../../components/workspace/BuyerWorkspaceSidebar";
+import FeesTaxesSection, { type FeesTaxesColumn, type FeesTaxesItem } from "./FeesTaxesSection";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +61,11 @@ function normalizeTaxRate(value?: number | null): number | null {
 function formatMonthlyCurrency(value?: number | null): string {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "-";
   return `${formatCurrency(value)}/mo`;
+}
+
+function formatYearlyCurrency(value?: number | null): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return "-";
+  return `${formatCurrency(value)}/yr`;
 }
 
 function formatTaxRateLabel(value?: number | null): string {
@@ -95,6 +102,90 @@ function formatFeeWithCadence(amount?: number | null, cadenceValue?: string | nu
   return formatCurrency(amount);
 }
 
+function convertFeeForMode(
+  amount: number | null,
+  cadenceValue: string | null | undefined,
+  mode: "monthly" | "yearly",
+): { amount: number | null; estimated: boolean; cadenceKnown: boolean } {
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+    return { amount: null, estimated: false, cadenceKnown: false };
+  }
+
+  const cadence = normalizeFeeCadence(cadenceValue);
+  if (cadence === "monthly") {
+    return {
+      amount: mode === "monthly" ? amount : amount * 12,
+      estimated: mode === "yearly",
+      cadenceKnown: true,
+    };
+  }
+  if (cadence === "annual") {
+    return {
+      amount: mode === "yearly" ? amount : amount / 12,
+      estimated: mode === "monthly",
+      cadenceKnown: true,
+    };
+  }
+  return { amount, estimated: false, cadenceKnown: false };
+}
+
+function buildPidFeeItem(
+  amount: number | null,
+  cadenceValue: string | null | undefined,
+  mode: "monthly" | "yearly",
+): FeesTaxesItem {
+  const converted = convertFeeForMode(amount, cadenceValue, mode);
+  if (!converted.cadenceKnown) {
+    return {
+      label: "PID fee",
+      value: formatFeeWithCadence(amount, cadenceValue ?? null),
+    };
+  }
+
+  return {
+    label: "PID fee",
+    value:
+      mode === "monthly"
+        ? formatMonthlyCurrency(converted.amount)
+        : formatYearlyCurrency(converted.amount),
+  };
+}
+
+function buildMudFeeItem(
+  amount: number | null,
+  rate: number | null,
+  price: number | null,
+  mode: "monthly" | "yearly",
+  fallbackRateLabel: string | null,
+): FeesTaxesItem {
+  if (
+    typeof rate === "number" &&
+    Number.isFinite(rate) &&
+    rate > 0 &&
+    typeof price === "number" &&
+    Number.isFinite(price) &&
+    price > 0
+  ) {
+    const annualAmount = price * rate;
+    return {
+      label: "MUD fee",
+      value: mode === "monthly" ? formatMonthlyCurrency(annualAmount / 12) : formatYearlyCurrency(annualAmount),
+    };
+  }
+
+  if (typeof amount === "number" && Number.isFinite(amount) && amount > 0) {
+    return {
+      label: "MUD fee",
+      value: formatEstimatedCurrency(amount),
+    };
+  }
+
+  return {
+    label: "MUD fee",
+    value: fallbackRateLabel ?? "-",
+  };
+}
+
 function formatFlag(value?: boolean): string {
   if (value === true) return "Yes";
   if (value === false) return "No";
@@ -119,40 +210,83 @@ function buildCommunityHref(listing: PublicHome, communitySlug?: string | null):
   return `/community?communityId=${encodeURIComponent(ref)}`;
 }
 
-function buildMapEmbedUrl(lat: number, lng: number): string {
-  const delta = 0.01;
-  const left = (lng - delta).toFixed(6);
-  const right = (lng + delta).toFixed(6);
-  const top = (lat + delta).toFixed(6);
-  const bottom = (lat - delta).toFixed(6);
+function normalizeExternalUrl(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return null;
 
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat.toFixed(6)}%2C${lng.toFixed(6)}`;
+  const withProtocol =
+    /^https?:\/\//i.test(raw)
+      ? raw
+      : raw.startsWith("//")
+        ? `https:${raw}`
+        : `https://${raw}`;
+
+  try {
+    const parsed = new URL(withProtocol);
+    if (!/^https?:$/i.test(parsed.protocol)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
-function buildContactHref(
-  contact:
-    | PublicHome["salesContact"]
-    | {
-        name?: string | null;
-        phone?: string | null;
-        email?: string | null;
-      }
-    | null,
-  fallbackBuilderHref: string | null,
-  fallbackCommunityHref: string | null,
-): string | null {
-  const phone = safeLink(contact?.phone || null);
-  if (phone) {
-    const digits = phone.replace(/[^0-9+]/g, "");
-    if (digits) return `tel:${digits}`;
+function buildPhoneHref(phone?: string | null): string | null {
+  const value = safeLink(phone || null);
+  if (!value) return null;
+  const digits = value.replace(/[^0-9+]/g, "");
+  return digits ? `tel:${digits}` : null;
+}
+
+function buildEmailHref(email?: string | null): string | null {
+  const value = safeLink(email || null);
+  return value ? `mailto:${value}` : null;
+}
+
+function getBuilderMonogram(name?: string | null): string {
+  const words = (name || "")
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!words.length) return "BR";
+  return words
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
+function ContactInfoIcon({ kind }: { kind: "name" | "phone" | "email" | "location" }) {
+  if (kind === "name") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20a8 8 0 0 1 16 0" />
+      </svg>
+    );
   }
 
-  const email = safeLink(contact?.email || null);
-  if (email) {
-    return `mailto:${email}`;
+  if (kind === "phone") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7.5 4.5h3l1.5 4-2 1.5a14 14 0 0 0 4 4l1.5-2 4 1.5v3A2 2 0 0 1 17.5 19 13 13 0 0 1 5 6.5 2 2 0 0 1 7.5 4.5Z" />
+      </svg>
+    );
   }
 
-  return fallbackBuilderHref || fallbackCommunityHref || null;
+  if (kind === "email") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5Z" />
+        <path d="m5 7 7 5 7-5" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 20s6-5.33 6-10a6 6 0 1 0-12 0c0 4.67 6 10 6 10Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
 }
 
 function formatModelAddress(listing: PublicHome): string | null {
@@ -217,7 +351,8 @@ const getListingPageData = cache(async (id: string) => {
     };
   }
 
-  const builderLookupRef = listing.keepupBuilderId || listing.builderSlug || listing.builder || "";
+  const builderLookupRef =
+    listing.keepupBuilderId || listing.builderSlug || listing.companyId || listing.builder || "";
   const communityLookupRef =
     listing.publicCommunityId ||
     listing.keepupCommunityId ||
@@ -514,6 +649,7 @@ export default async function ListingPage({
         }
       : null;
   const effectiveSalesContact = listingSalesContact || communitySalesContact;
+  const builderLogoUrl = safeLink(builderProfile?.logoUrl || null);
   const effectiveSchools =
     listing.schools && Object.values(listing.schools).some(Boolean)
       ? listing.schools
@@ -525,9 +661,12 @@ export default async function ListingPage({
             high: community.schools.high ?? undefined,
           }
         : null;
-  const contactHref = safeLink(
-    buildContactHref(effectiveSalesContact, builderHref, communityHref),
+  const contactHref = safeLink(builderHref || communityHref);
+  const builderWebsiteHref = normalizeExternalUrl(
+    builderProfile?.websiteUrl || builderProfile?.website || null,
   );
+  const contactPhoneHref = buildPhoneHref(effectiveSalesContact?.phone ?? null);
+  const contactEmailHref = buildEmailHref(effectiveSalesContact?.email ?? null);
   const floorPlanPreviewUrl = safeLink(resolveFloorPlanPreviewUrl(listing, planCatalog));
   const floorPlanHref = safeLink(resolveFloorPlanPdfUrl(listing, planCatalog));
   const showFloorPlanSection = Boolean(floorPlanPreviewUrl || floorPlanHref);
@@ -545,7 +684,7 @@ export default async function ListingPage({
     typeof community?.pidFee === "number" && Number.isFinite(community.pidFee) && community.pidFee > 0
       ? community.pidFee
       : null;
-  const communityPidFeeLabel = formatFeeWithCadence(communityPidFee, community?.pidFeeFrequency ?? null);
+  const communityMudTaxRate = normalizeTaxRate(community?.mudTaxRate);
   const communityMudTaxRateLabel = formatPercentFromDecimal(community?.mudTaxRate);
   const communityLegacyMudAmount =
     typeof community?.mudFeeAmount === "number" &&
@@ -559,6 +698,145 @@ export default async function ListingPage({
       : null;
   const estimatedMonthlyTaxes =
     estimatedAnnualTaxes !== null ? estimatedAnnualTaxes / 12 : null;
+  const monthlyPidFeeItem = buildPidFeeItem(
+    communityPidFee,
+    community?.pidFeeFrequency ?? null,
+    "monthly",
+  );
+  const yearlyPidFeeItem = buildPidFeeItem(
+    communityPidFee,
+    community?.pidFeeFrequency ?? null,
+    "yearly",
+  );
+  const monthlyMudFeeItem = buildMudFeeItem(
+    communityLegacyMudAmount,
+    communityMudTaxRate,
+    effectivePrice,
+    "monthly",
+    communityMudTaxRateLabel,
+  );
+  const yearlyMudFeeItem = buildMudFeeItem(
+    communityLegacyMudAmount,
+    communityMudTaxRate,
+    effectivePrice,
+    "yearly",
+    communityMudTaxRateLabel,
+  );
+  const hasPidColumn = community?.pid === true || communityPidFee !== null;
+  const hasMudColumn =
+    community?.mud === true || communityMudTaxRateLabel !== null || communityLegacyMudAmount !== null;
+  const pidFlagValue = hasPidColumn ? "Yes" : formatFlag(community?.pid);
+  const mudFlagValue =
+    community?.mud === true && communityMudTaxRateLabel
+      ? `Yes (${communityMudTaxRateLabel})`
+      : community?.mud === true
+        ? "Yes"
+        : communityMudTaxRateLabel ?? formatFlag(community?.mud);
+  const monthlyFeeColumns: FeesTaxesColumn[] = [
+    {
+      key: "hoa",
+      top: {
+        label: "HOA",
+        value: formatMonthlyCurrency(communityHoaMonthly),
+      },
+      bottom: null,
+    },
+    {
+      key: "taxes",
+      top: {
+        label: "Tax rate",
+        value: formatTaxRateLabel(community?.taxRate),
+      },
+      bottom: {
+        label: "Est. taxes",
+        value: formatEstimatedCurrency(estimatedMonthlyTaxes),
+      },
+    },
+    ...(hasPidColumn
+      ? [
+          {
+            key: "pid",
+            top: {
+              label: "PID",
+              value: pidFlagValue,
+            },
+            bottom: {
+              label: monthlyPidFeeItem.label,
+              value: monthlyPidFeeItem.value,
+            },
+          } satisfies FeesTaxesColumn,
+        ]
+      : []),
+    ...(hasMudColumn
+      ? [
+          {
+            key: "mud",
+            top: {
+              label: "MUD",
+              value: mudFlagValue,
+            },
+            bottom: {
+              label: monthlyMudFeeItem.label,
+              value: monthlyMudFeeItem.value,
+            },
+          } satisfies FeesTaxesColumn,
+        ]
+      : []),
+  ];
+  const yearlyFeeColumns: FeesTaxesColumn[] = [
+    {
+      key: "hoa",
+      top: {
+        label: "HOA",
+        value:
+          typeof communityHoaMonthly === "number" && Number.isFinite(communityHoaMonthly)
+            ? formatYearlyCurrency(communityHoaMonthly * 12)
+            : "-",
+      },
+      bottom: null,
+    },
+    {
+      key: "taxes",
+      top: {
+        label: "Tax rate",
+        value: formatTaxRateLabel(community?.taxRate),
+      },
+      bottom: {
+        label: "Est. annual taxes",
+        value: formatEstimatedCurrency(estimatedAnnualTaxes),
+      },
+    },
+    ...(hasPidColumn
+      ? [
+          {
+            key: "pid",
+            top: {
+              label: "PID",
+              value: pidFlagValue,
+            },
+            bottom: {
+              label: yearlyPidFeeItem.label,
+              value: yearlyPidFeeItem.value,
+            },
+          } satisfies FeesTaxesColumn,
+        ]
+      : []),
+    ...(hasMudColumn
+      ? [
+          {
+            key: "mud",
+            top: {
+              label: "MUD",
+              value: mudFlagValue,
+            },
+            bottom: {
+              label: yearlyMudFeeItem.label,
+              value: yearlyMudFeeItem.value,
+            },
+          } satisfies FeesTaxesColumn,
+        ]
+      : []),
+  ];
   const communityAmenities = Array.isArray(community?.amenities)
     ? community.amenities.filter(Boolean)
     : [];
@@ -586,37 +864,50 @@ export default async function ListingPage({
   const price = formatPrice(listing);
   const badge = getStatusBadge(listing);
   const address = formatAddress(listing);
-  const summaryItems: string[] = [];
+  const summaryItems: Array<{ key: string; label: string; href?: string | null }> = [];
   if (typeof listing.beds === "number" && Number.isFinite(listing.beds) && listing.beds > 0) {
-    summaryItems.push(`${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(listing.beds)} bd`);
+    summaryItems.push({
+      key: "beds",
+      label: `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(listing.beds)} bd`,
+    });
   }
   const bathLabel = formatBathLabel(listing.baths);
-  if (bathLabel) summaryItems.push(bathLabel);
+  if (bathLabel) summaryItems.push({ key: "baths", label: bathLabel });
   if (typeof listing.sqft === "number" && Number.isFinite(listing.sqft) && listing.sqft > 0) {
-    summaryItems.push(`${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(listing.sqft))} sqft`);
+    summaryItems.push({
+      key: "sqft",
+      label: `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(listing.sqft))} sqft`,
+    });
   }
   if (typeof listing.garage === "number" && Number.isFinite(listing.garage) && listing.garage > 0) {
-    summaryItems.push(`${listing.garage} car garage`);
+    summaryItems.push({ key: "garage", label: `${listing.garage} car garage` });
   }
   if (
     typeof planCatalog?.stories === "number" &&
     Number.isFinite(planCatalog.stories) &&
     planCatalog.stories > 0
   ) {
-    summaryItems.push(`${planCatalog.stories} ${planCatalog.stories === 1 ? "story" : "stories"}`);
+    summaryItems.push({
+      key: "stories",
+      label: `${planCatalog.stories} ${planCatalog.stories === 1 ? "story" : "stories"}`,
+    });
   }
   if (builderLabel) {
-    summaryItems.push(`Builder: ${builderLabel}`);
+    summaryItems.push({
+      key: "builder",
+      label: `Builder: ${builderLabel}`,
+      href: builderHref,
+    });
   }
   const planName = cleanText(listing.planName) || cleanText(planCatalog?.name);
   if (planName) {
-    summaryItems.push(`Plan Name: ${planName}`);
+    summaryItems.push({ key: "plan", label: `Plan Name: ${planName}` });
   }
   const lotSize =
     cleanText(listing.lotSize) ||
     (communityProductTypes.length ? communityProductTypes.join(", ") : null);
   if (lotSize) {
-    summaryItems.push(`Lot size: ${lotSize}`);
+    summaryItems.push({ key: "lot", label: `Lot size: ${lotSize}` });
   }
   const primaryImage = getPrimaryImage(listing, builderProfile, community);
   const galleryUrls = Array.from(
@@ -630,7 +921,21 @@ export default async function ListingPage({
     isPlaceholder: index === 0 ? primaryImage.isPlaceholder : false,
   }));
   const modelAddressLine = formatModelAddress(listing);
-  const hasMap = hasValidCoordinates(listing);
+  const listingMapLocation = hasValidCoordinates(listing)
+    ? {
+        lat: listing.lat as number,
+        lng: listing.lng as number,
+      }
+    : typeof community?.location?.lat === "number" &&
+        typeof community?.location?.lng === "number" &&
+        Number.isFinite(community.location.lat) &&
+        Number.isFinite(community.location.lng)
+      ? {
+          lat: community.location.lat,
+          lng: community.location.lng,
+        }
+      : null;
+  const hasMap = Boolean(listingMapLocation);
   const relatedHomes = communityHomes
     .filter((home) => home.id !== listing.id)
     .slice(0, 6);
@@ -762,7 +1067,22 @@ export default async function ListingPage({
           </div>
           {summaryItems.length ? (
             <div className={styles.metaBar}>
-              <p className={styles.summaryText}>{summaryItems.join(" | ")}</p>
+              <p className={styles.summaryText}>
+                {summaryItems.map((item, index) => (
+                  <Fragment key={item.key}>
+                    {item.href ? (
+                      <Link className={styles.summaryLink} href={item.href}>
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <span>{item.label}</span>
+                    )}
+                    {index < summaryItems.length - 1 ? (
+                      <span className={styles.summaryDivider}>|</span>
+                    ) : null}
+                  </Fragment>
+                ))}
+              </p>
             </div>
           ) : null}
           </div>
@@ -804,42 +1124,118 @@ export default async function ListingPage({
             ) : null}
           </div>
           <div className={styles.panel}>
-            <h3>Sales contact</h3>
+            <div className={styles.contactHero}>
+              <div className={styles.contactBrandMark}>
+                {builderLogoUrl ? (
+                  <div
+                    className={styles.contactBrandImage}
+                    style={{ backgroundImage: `url(${builderLogoUrl})` }}
+                    role="img"
+                    aria-label={builderLabel ? `${builderLabel} logo` : "Builder logo"}
+                  />
+                ) : (
+                  <div className={styles.contactBrandFallback} aria-hidden="true">
+                    {getBuilderMonogram(builderLabel)}
+                  </div>
+                )}
+              </div>
+              <div className={styles.contactHeroCopy}>
+                <h3>Sales contact</h3>
+                {builderHref && builderLabel ? (
+                  <Link className={styles.contactBuilderLink} href={builderHref}>
+                    {builderLabel}
+                  </Link>
+                ) : builderLabel ? (
+                  <div className={styles.contactBuilderText}>{builderLabel}</div>
+                ) : null}
+                {communityHref && communityLabel ? (
+                  <Link className={styles.contactCommunityLink} href={communityHref}>
+                    {communityLabel}
+                  </Link>
+                ) : communityLabel ? (
+                  <div className={styles.contactCommunityText}>{communityLabel}</div>
+                ) : null}
+              </div>
+            </div>
             {effectiveSalesContact ? (
-              <ul className={styles.list}>
+              <div className={styles.contactCard}>
                 {effectiveSalesContact.name ? (
-                  <li>
-                    <strong>Name:</strong> {effectiveSalesContact.name}
-                  </li>
+                  <div className={styles.contactRow}>
+                    <span className={styles.contactIcon}>
+                      <ContactInfoIcon kind="name" />
+                    </span>
+                    <div className={styles.contactMeta}>
+                      <div className={styles.contactLabel}>Name</div>
+                      <div className={styles.contactValue}>{effectiveSalesContact.name}</div>
+                    </div>
+                  </div>
                 ) : null}
                 {effectiveSalesContact.phone ? (
-                  <li>
-                    <strong>Phone:</strong> {effectiveSalesContact.phone}
-                  </li>
+                  <div className={styles.contactRow}>
+                    <span className={styles.contactIcon}>
+                      <ContactInfoIcon kind="phone" />
+                    </span>
+                    <div className={styles.contactMeta}>
+                      <div className={styles.contactLabel}>Phone</div>
+                      {contactPhoneHref ? (
+                        <a href={contactPhoneHref} className={styles.contactValueLink}>
+                          {effectiveSalesContact.phone}
+                        </a>
+                      ) : (
+                        <div className={styles.contactValue}>{effectiveSalesContact.phone}</div>
+                      )}
+                    </div>
+                  </div>
                 ) : null}
                 {effectiveSalesContact.email ? (
-                  <li>
-                    <strong>Email:</strong> {effectiveSalesContact.email}
-                  </li>
+                  <div className={styles.contactRow}>
+                    <span className={styles.contactIcon}>
+                      <ContactInfoIcon kind="email" />
+                    </span>
+                    <div className={styles.contactMeta}>
+                      <div className={styles.contactLabel}>Email</div>
+                      {contactEmailHref ? (
+                        <a href={contactEmailHref} className={styles.contactValueLink}>
+                          {effectiveSalesContact.email}
+                        </a>
+                      ) : (
+                        <div className={styles.contactValue}>{effectiveSalesContact.email}</div>
+                      )}
+                    </div>
+                  </div>
                 ) : null}
                 {modelAddressLine ? (
-                  <li>
-                    <strong>Model address:</strong> {modelAddressLine}
-                  </li>
+                  <div className={styles.contactRow}>
+                    <span className={styles.contactIcon}>
+                      <ContactInfoIcon kind="location" />
+                    </span>
+                    <div className={styles.contactMeta}>
+                      <div className={styles.contactLabel}>Model address</div>
+                      <div className={styles.contactValue}>{modelAddressLine}</div>
+                    </div>
+                  </div>
                 ) : null}
-              </ul>
+              </div>
             ) : (
               <p className={styles.muted}>No sales contact info provided.</p>
             )}
             <div className={styles.salesActions}>
               <div className={styles.ctaRow}>
                 {contactHref ? (
-                  renderActionLink(contactHref, "Contact Builder", styles.ctaPrimary)
+                  renderActionLink(contactHref, "View Builder", styles.ctaPrimary)
                 ) : (
                   <button type="button" className={styles.ctaPrimary} disabled>
-                    Contact Builder
+                    View Builder
                   </button>
                 )}
+                {builderWebsiteHref
+                  ? renderActionLink(
+                      builderWebsiteHref,
+                      "Visit Builder Website",
+                      styles.ctaGhost,
+                      true,
+                    )
+                  : null}
                 {communityHref
                   ? renderActionLink(communityHref, "View Community", styles.ctaGhost)
                   : null}
@@ -852,14 +1248,12 @@ export default async function ListingPage({
           <div className={styles.panel}>
             <h3>Location</h3>
             <p className={styles.muted}>{address}</p>
-            {hasMap ? (
+            {listingMapLocation ? (
               <div className={styles.mapBox}>
-                <iframe
-                  title="Listing map"
-                  src={buildMapEmbedUrl(listing.lat as number, listing.lng as number)}
-                  className={styles.mapFrame}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
+                <ListingLocationMap
+                  lat={listingMapLocation.lat}
+                  lng={listingMapLocation.lng}
+                  label={listingTitleAddress}
                 />
               </div>
             ) : (
@@ -906,45 +1300,10 @@ export default async function ListingPage({
             </div>
           </div>
           <div className={styles.panel}>
-            <h3>Fees & taxes</h3>
-            <div className={styles.communityGrid}>
-              <div>
-                <div className={styles.specLabel}>HOA</div>
-                <div className={styles.specValue}>{formatMonthlyCurrency(communityHoaMonthly)}</div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>Tax rate</div>
-                <div className={styles.specValue}>{formatTaxRateLabel(community?.taxRate)}</div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>Est. annual taxes</div>
-                <div className={styles.specValue}>{formatEstimatedCurrency(estimatedAnnualTaxes)}</div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>Est. monthly taxes</div>
-                <div className={styles.specValue}>{formatEstimatedCurrency(estimatedMonthlyTaxes)}</div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>PID</div>
-                <div className={styles.specValue}>{formatFlag(community?.pid)}</div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>PID fee</div>
-                <div className={styles.specValue}>{communityPidFeeLabel}</div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>
-                  {communityMudTaxRateLabel ? "MUD" : communityLegacyMudAmount !== null ? "MUD (legacy)" : "MUD"}
-                </div>
-                <div className={styles.specValue}>
-                  {communityMudTaxRateLabel ?? formatEstimatedCurrency(communityLegacyMudAmount)}
-                </div>
-              </div>
-              <div>
-                <div className={styles.specLabel}>MUD district</div>
-                <div className={styles.specValue}>{formatFlag(community?.mud)}</div>
-              </div>
-            </div>
+            <FeesTaxesSection
+              monthlyColumns={monthlyFeeColumns}
+              yearlyColumns={yearlyFeeColumns}
+            />
           </div>
           </div>
 
@@ -993,10 +1352,10 @@ export default async function ListingPage({
       <div className={styles.mobileCtaBar}>
         <div className={styles.mobileCtaInner}>
           {contactHref ? (
-            renderActionLink(contactHref, "Contact Builder", styles.ctaPrimary)
+            renderActionLink(contactHref, "View Builder", styles.ctaPrimary)
           ) : (
             <button type="button" className={styles.ctaPrimary} disabled>
-              Contact Builder
+              View Builder
             </button>
           )}
           <SaveHomeButton listingId={listing.id} />

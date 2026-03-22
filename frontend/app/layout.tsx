@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { GoogleAnalytics } from "../components/GoogleAnalytics";
 import { Providers } from "../components/Providers";
 import {
   DEFAULT_SITE_NAME,
   DEFAULT_TWITTER_CARD,
   getConfiguredSiteOrigin,
 } from "../lib/seo";
+
+const googleAnalyticsMeasurementId =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || "";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,6 +43,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.variable}>
+        {googleAnalyticsMeasurementId ? (
+          <GoogleAnalytics measurementId={googleAnalyticsMeasurementId} />
+        ) : null}
         <Providers>{children}</Providers>
       </body>
     </html>

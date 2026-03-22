@@ -33,7 +33,8 @@ function buildListingsMongoQuery(input = {}) {
 
   const query = {};
   if (!includeInactive) {
-    query.isActive = true;
+    // Treat legacy records with no `isActive` flag as active so local/test data still renders.
+    query.$or = [{ isActive: true }, { isActive: { $exists: false } }];
   }
   if (Array.isArray(publicCommunityVariants) && publicCommunityVariants.length) {
     query.publicCommunityId = { $in: publicCommunityVariants };

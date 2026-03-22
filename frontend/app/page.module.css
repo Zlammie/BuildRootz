@@ -361,13 +361,13 @@
 }
 
 .dotModel {
-  background: #b8d8ff;
+  background: var(--map-model);
 }
 
 .split {
   /* Split view owns the panel height; map/list children can then manage nested scrolling. */
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr);
   height: var(--split-viewport-height, clamp(620px, 76vh, 980px));
   min-height: 0;
   overflow: hidden;
@@ -494,9 +494,8 @@
 }
 
 .mapModeCanvas {
-  min-height: 0;
-  height: 100%;
-  width: 100%;
+  position: absolute;
+  inset: 0;
 }
 
 .mapLayerControl {
@@ -789,7 +788,7 @@
 }
 
 .mapMarkerModel {
-  background: #b8d8ff;
+  background: var(--map-model);
 }
 
 .mapMarkerLabel {
@@ -814,6 +813,18 @@
 .mapPriceBubble {
   position: relative;
   display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  appearance: none;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mapPriceBubbleInner {
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 56px;
@@ -830,12 +841,11 @@
   line-height: 1;
   white-space: nowrap;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease,
     border-color 0.14s ease;
 }
 
-.mapPriceBubble::after {
+.mapPriceBubbleInner::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -848,34 +858,38 @@
   background: rgba(255, 255, 255, 0.96);
 }
 
-.mapPriceBubble:hover {
+.mapPriceBubble:hover .mapPriceBubbleInner {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
 }
 
 .mapPriceBubble:focus-visible {
   outline: none;
+}
+
+.mapPriceBubble:focus-visible .mapPriceBubbleInner {
+  outline: none;
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(95, 125, 90, 0.4), 0 12px 24px rgba(0, 0, 0, 0.24);
 }
 
-.mapPriceBubbleActive {
+.mapPriceBubbleActive .mapPriceBubbleInner {
   border-color: rgba(63, 92, 57, 0.6);
   background: #f0f8ed;
   color: #294024;
 }
 
-.mapPriceBubbleActive::after {
+.mapPriceBubbleActive .mapPriceBubbleInner::after {
   border-right-color: rgba(63, 92, 57, 0.6);
   border-bottom-color: rgba(63, 92, 57, 0.6);
   background: #f0f8ed;
 }
 
-.mapPriceBubbleMuted {
+.mapPriceBubbleMuted .mapPriceBubbleInner {
   color: #7a7168;
   border-color: rgba(122, 113, 104, 0.32);
 }
 
-.mapPriceBubbleMuted::after {
+.mapPriceBubbleMuted .mapPriceBubbleInner::after {
   border-right-color: rgba(122, 113, 104, 0.32);
   border-bottom-color: rgba(122, 113, 104, 0.32);
 }
@@ -921,6 +935,26 @@
   overflow: hidden;
 }
 
+.mapDebugBadge {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 6;
+  max-width: min(320px, calc(100% - 24px));
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(35, 33, 29, 0.9);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
+.mapDebugBadge p {
+  margin: 0;
+}
+
 .listScrollRegion {
   /* Dedicated split-view scroller so map stays fixed while cards move. */
   flex: 1 1 0;
@@ -938,7 +972,13 @@
 
 .mapOnlyPanel {
   background: var(--surface);
+  display: flex;
+  flex-direction: column;
   min-height: clamp(620px, 76vh, 980px);
+}
+
+.mapOnlyPanel > .mapModePanel {
+  flex: 1 1 auto;
 }
 
 .listHeader {
@@ -1136,7 +1176,7 @@
 }
 
 .status_model {
-  background: #b8d8ff;
+  background: var(--map-model);
   color: #0b3b68;
 }
 

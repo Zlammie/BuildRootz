@@ -17,6 +17,7 @@
   --map-available: #5f7d5a;
   --map-inventory: #d9b65d;
   --map-coming-soon: #b8a89a;
+  --map-model: #b8d8ff;
   --map-ring: rgba(46, 62, 45, 0.35);
 
   /* Layout tokens derived from palette */

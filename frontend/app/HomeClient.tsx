@@ -147,11 +147,25 @@ function normalizeViewMode(value: string | null | undefined): ViewMode | null {
 }
 
 function normalizeLayerMode(value: string | null | undefined): LayerMode | null {
-  const normalized = (value || "").trim().toLowerCase();
+  const normalized = (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/%2b/g, "+")
+    .replace(/\s+/g, "+");
   if (normalized === "community" || normalized === "community+inventory") {
     return normalized;
   }
   return null;
+}
+
+function getCurrentQueryParam(
+  searchParams: ReturnType<typeof useSearchParams>,
+  key: string,
+): string | null {
+  if (typeof window !== "undefined") {
+    return new URLSearchParams(window.location.search).get(key);
+  }
+  return searchParams.get(key);
 }
 
 function parseBoundsParam(value: string | null): MapBounds | null {
@@ -377,7 +391,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
   }, [initialHomes]);
 
   useEffect(() => {
-    const fromQuery = normalizeViewMode(searchParams.get("view"));
+    const fromQuery = normalizeViewMode(getCurrentQueryParam(searchParams, "view"));
     if (fromQuery) {
       setViewMode(fromQuery);
       setViewModeReady(true);
@@ -403,14 +417,14 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     if (!viewModeReady || typeof window === "undefined") return;
     window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
     const nextParams = new URLSearchParams(searchParams.toString());
-    if (nextParams.get("view") === viewMode) return;
+    if (normalizeViewMode(getCurrentQueryParam(searchParams, "view")) === viewMode) return;
     nextParams.set("view", viewMode);
     const query = nextParams.toString();
     window.history.replaceState({}, "", query ? `${pathname}?${query}` : pathname);
   }, [pathname, searchParams, viewMode, viewModeReady]);
 
   useEffect(() => {
-    const fromQuery = normalizeLayerMode(searchParams.get("layer"));
+    const fromQuery = normalizeLayerMode(getCurrentQueryParam(searchParams, "layer"));
     if (fromQuery) {
       setLayerMode(fromQuery);
       setLayerModeReady(true);
@@ -436,7 +450,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     if (!layerModeReady || typeof window === "undefined") return;
     window.localStorage.setItem(MAP_LAYER_STORAGE_KEY, layerMode);
     const nextParams = new URLSearchParams(searchParams.toString());
-    if (nextParams.get("layer") === layerMode) return;
+    if (normalizeLayerMode(getCurrentQueryParam(searchParams, "layer")) === layerMode) return;
     nextParams.set("layer", layerMode);
     const query = nextParams.toString();
     window.history.replaceState({}, "", query ? `${pathname}?${query}` : pathname);
@@ -1075,12 +1089,6 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
             <div className={styles.split} ref={splitRef} style={splitViewportStyle}>
               <div className={styles.mapPanel}>
                 <div className={styles.mapModePanel}>
-                  <p className={styles.mapModeMeta}>
-                    Showing {mapCounts.mappable} homes on map ({mapCounts.missing} missing location)
-                  </p>
-                  <p className={styles.mapModeHint}>
-                    Hover a pin or a card to preview details.
-                  </p>
                   <ListingsMap
                     homes={sortedListings}
                     communityPoints={communityPoints}
@@ -1089,12 +1097,13 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
                     communityMap={communityMap}
                     hoveredHomeId={hoveredHomeId}
                     onHoverHome={setHoveredHomeId}
-                    appliedBounds={appliedBounds || mapReferenceBounds}
-                    fitToHomesOnLoad={!appliedBounds && !mapReferenceBounds}
+                    appliedBounds={appliedBounds}
+                    fitToHomesOnLoad={!appliedBounds}
                     hasUnappliedMapMove={hasUnappliedMapMove}
                     searchingThisArea={homesLoading}
                     onViewportBoundsChange={handleMapViewportBoundsChange}
                     onSearchThisArea={handleSearchThisArea}
+                    renderMode="split"
                     layerMode={layerMode}
                     onLayerModeChange={setLayerMode}
                   />
@@ -1259,12 +1268,13 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
                   communityMap={communityMap}
                   hoveredHomeId={hoveredHomeId}
                   onHoverHome={setHoveredHomeId}
-                  appliedBounds={appliedBounds || mapReferenceBounds}
-                  fitToHomesOnLoad={!appliedBounds && !mapReferenceBounds}
+                  appliedBounds={appliedBounds}
+                  fitToHomesOnLoad={!appliedBounds}
                   hasUnappliedMapMove={hasUnappliedMapMove}
                   searchingThisArea={homesLoading}
                   onViewportBoundsChange={handleMapViewportBoundsChange}
                   onSearchThisArea={handleSearchThisArea}
+                  renderMode="map"
                   layerMode={layerMode}
                   onLayerModeChange={setLayerMode}
                 />

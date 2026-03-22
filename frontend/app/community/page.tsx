@@ -6,12 +6,12 @@ import CommunityOverviewCard from "../../components/community/CommunityOverviewC
 import CommunityMapCard from "../../components/community/CommunityMapCard";
 import BuilderSection from "../../components/community/BuilderSection";
 import CommunityComparisonSection from "../../components/community/CommunityComparisonSection";
-import CommunityDetailsSection from "../../components/community/CommunityDetailsSection";
 import communitySections from "../../components/community/CommunitySections.module.css";
 import type {
   BuilderCardData,
   CommunityHeaderBadge,
   CommunityOverviewMetric,
+  CommunitySchoolField,
   DetailStat,
 } from "../../components/community/types";
 import {
@@ -877,13 +877,15 @@ export default async function CommunityPage({ searchParams }: Props) {
   const headerBadges: CommunityHeaderBadge[] = [
     { label: "Total Builders", value: formatCount(builderModels.length) },
     { label: "Total Plans", value: formatCount(communityPlans.length) },
-    { label: "Inventory Homes", value: formatCount(quickMoveInHomes.length) },
+    { label: "Quick Move-In Homes", value: formatCount(quickMoveInHomes.length) },
   ];
 
-  const overviewMetrics: CommunityOverviewMetric[] = [
+  const secondaryOverviewMetrics: CommunityOverviewMetric[] = [
     { label: "Builder count", value: formatCount(builderModels.length) },
     { label: "Plan count", value: formatCount(communityPlans.length) },
-    { label: "Inventory homes", value: formatCount(quickMoveInHomes.length) },
+    { label: "Quick Move-In homes", value: formatCount(quickMoveInHomes.length) },
+  ];
+  const primaryOverviewMetrics: CommunityOverviewMetric[] = [
     {
       label: "Price range",
       value: formatRange(
@@ -898,11 +900,8 @@ export default async function CommunityPage({ searchParams }: Props) {
         (value) => `${value.toLocaleString()} sqft`,
       ),
     },
-    {
-      label: "Lot size",
-      value: productTypes.length ? productTypes.join(", ") : "-",
-    },
   ];
+  const lotSizeOptions = productTypes;
 
   const builderCards: BuilderCardData[] = builderModels.map((builder) => {
     const plans = mergePlanViews(
@@ -976,7 +975,7 @@ export default async function CommunityPage({ searchParams }: Props) {
       },
       metrics: [
         { label: "Lots", value: displayValue(formatCount(builder.availableLots)) },
-        { label: "Inventory Homes", value: formatCount(inventoryHomes.length) },
+        { label: "Quick Move-In Homes", value: formatCount(inventoryHomes.length) },
         { label: "Plans Offered", value: formatCount(plans.length || null) },
         { label: "Avg Price", value: avgPrice !== null ? formatCurrency(avgPrice) : "—" },
         { label: "Avg Sqft", value: avgSqft !== null ? `${Math.round(avgSqft).toLocaleString()} sqft` : "—" },
@@ -995,9 +994,25 @@ export default async function CommunityPage({ searchParams }: Props) {
   const builderSectionCommunityId =
     cleanString(community?.id) || cleanString(community?.slug) || "unknown";
 
-  const schoolsSummary =
-    toSchoolsLine((community?.communityDetails?.schools as Record<string, unknown> | null) || null) ||
-    "School information coming soon.";
+  const schoolSource =
+    ((community?.communityDetails?.schools as Record<string, unknown> | null) || null) ??
+    ((community?.schools as Record<string, unknown> | null) || null);
+  const schoolsDistrict =
+    cleanString(schoolSource?.district) || cleanString(schoolSource?.isd) || null;
+  const schoolFields: CommunitySchoolField[] = [
+    {
+      label: "Elementary School",
+      value: cleanString(schoolSource?.elementary) || "Not listed yet",
+    },
+    {
+      label: "Middle School",
+      value: cleanString(schoolSource?.middle) || "Not listed yet",
+    },
+    {
+      label: "High School",
+      value: cleanString(schoolSource?.high) || "Not listed yet",
+    },
+  ];
 
   const feeStats: DetailStat[] = [
     { label: "HOA", value: hoaLabel },
@@ -1058,17 +1073,25 @@ export default async function CommunityPage({ searchParams }: Props) {
           {community && (
             <>
               <div className={communitySections.topGrid}>
-                <CommunityOverviewCard metrics={overviewMetrics} />
-                <CommunityMapCard />
+                <CommunityOverviewCard
+                  primaryMetrics={primaryOverviewMetrics}
+                  secondaryMetrics={secondaryOverviewMetrics}
+                  lotSizeOptions={lotSizeOptions}
+                  feeStats={feeStats}
+                  amenities={amenities}
+                  schools={schoolFields}
+                  schoolsDistrict={schoolsDistrict}
+                />
+                <CommunityMapCard
+                  name={community.name || "Community"}
+                  locationLabel={location}
+                  lat={community.location?.lat ?? null}
+                  lng={community.location?.lng ?? null}
+                />
               </div>
 
               <BuilderSection communityId={builderSectionCommunityId} builders={builderCards} />
               <CommunityComparisonSection builders={builderCards} />
-              <CommunityDetailsSection
-                feeStats={feeStats}
-                amenities={amenities}
-                schoolsSummary={schoolsSummary}
-              />
             </>
           )}
         </div>

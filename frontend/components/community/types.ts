@@ -63,3 +63,8 @@ export type DetailStat = {
   label: string;
   value: string;
 };
+
+export type CommunitySchoolField = {
+  label: string;
+  value: string;
+};

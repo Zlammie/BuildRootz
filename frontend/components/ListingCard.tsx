@@ -7,6 +7,7 @@ import {
   formatPrice,
   getPrimaryImage,
   getSpecPills,
+  getStatusBadge,
   safeLink,
 } from "../lib/listingFormatters";
 import { buildListingLocationLine } from "../../shared/listingLocation";
@@ -34,11 +35,6 @@ type Props = {
   isHighlighted?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-};
-
-type StatusChip = {
-  label: string;
-  tone: "quickMoveIn" | "model" | "comingSoon" | "inventory" | "available";
 };
 
 function communityHref(home: PublicHome, community?: CommunityCardSummary | null): string | null {
@@ -81,27 +77,6 @@ function locationLine(home: PublicHome, community?: CommunityCardSummary | null)
   });
 }
 
-function buildStatusChip(home: PublicHome): StatusChip {
-  const statusValue = cleanText(home.status)?.toLowerCase() || "";
-  const tagValue = cleanText(home.tag)?.toLowerCase() || "";
-  const rawStatus = `${statusValue} ${tagValue}`.trim();
-  const hasQuickMoveIn = rawStatus.includes("quick move") || rawStatus.includes("spec");
-
-  if (hasQuickMoveIn) {
-    return { label: "Quick Move-In", tone: "quickMoveIn" };
-  }
-  if (rawStatus.includes("model")) {
-    return { label: "Model", tone: "model" };
-  }
-  if (rawStatus.includes("coming")) {
-    return { label: "Coming soon", tone: "comingSoon" };
-  }
-  if (rawStatus.includes("inventory")) {
-    return { label: "Inventory", tone: "inventory" };
-  }
-  return { label: "Available", tone: "available" };
-}
-
 function getPhotoCount(home: PublicHome): number {
   const urls = new Set<string>();
   const pushUrl = (value: unknown) => {
@@ -133,9 +108,9 @@ export default function ListingCard({
   const listingAddressTitle = addressTitle(home);
   const listingLocation = locationLine(home, community);
   const image = getPrimaryImage(home, builder, community);
-  const statusChip = buildStatusChip(home);
+  const statusChip = getStatusBadge(home);
   const tagLabel = cleanText(home.tag);
-  const shouldShowTag = !!tagLabel && tagLabel.toLowerCase() !== statusChip.label.toLowerCase();
+  const shouldShowTag = !!tagLabel && tagLabel.toLowerCase() !== statusChip.text.toLowerCase();
   const listingHref = `/listing/${home.id}`;
   const isSaved = savedHomes.includes(home.id);
   const hasConcreteLocation = listingLocation !== "Location coming soon";
@@ -183,8 +158,8 @@ export default function ListingCard({
           className={styles.mediaLink}
           aria-label={`View listing for ${listingAddressTitle}`}
         >
-          <span className={`${styles.statusOverlay} ${styles[`statusOverlay_${statusChip.tone}`]}`}>
-            {statusChip.label}
+          <span className={`${styles.statusOverlay} ${styles[`statusOverlay_${statusChip.variant}`]}`}>
+            {statusChip.text}
           </span>
           {photoCount > 1 ? <span className={styles.photoCount}>{photoCount}</span> : null}
         </Link>

@@ -9,9 +9,9 @@ const {
   paginateListings,
 } = require("../../shared/listingsQuery");
 
-test("buildListingsMongoQuery defaults to active listings", () => {
+test("buildListingsMongoQuery defaults to active-or-legacy listings", () => {
   const query = buildListingsMongoQuery();
-  assert.equal(query.isActive, true);
+  assert.deepEqual(query.$or, [{ isActive: true }, { isActive: { $exists: false } }]);
 });
 
 test("buildListingsMongoQuery applies common filters", () => {

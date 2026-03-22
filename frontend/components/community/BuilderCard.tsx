@@ -218,7 +218,7 @@ export default function BuilderCard({
               aria-selected={activeTab === "inventory"}
               onClick={() => handleTabChange("inventory")}
             >
-              Inventory ({inventoryHomes.length})
+              Quick Move-In ({inventoryHomes.length})
             </button>
           </div>
 

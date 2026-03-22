@@ -1,82 +1,319 @@
 .page {
+  --about-accent-rgb: 95, 125, 90;
+  --about-accent: #5f7d5a;
+  --about-accent-soft: rgba(var(--about-accent-rgb), 0.08);
+  --about-accent-line: rgba(var(--about-accent-rgb), 0.16);
   min-height: 100vh;
-  background: var(--page-bg);
-  padding: 0 0 80px;
+  background:
+    radial-gradient(circle at top, rgba(191, 212, 201, 0.34), transparent 34%),
+    linear-gradient(180deg, #f7f3ec 0%, var(--page-bg) 26%);
+  padding: 0 0 96px;
 }
 
 .layout {
-  max-width: 960px;
+  max-width: 1060px;
   margin: 0 auto;
   display: grid;
-  gap: 24px;
-  padding: 32px 24px 80px;
+  gap: 28px;
+  padding: 40px 24px 88px;
 }
 
 .hero {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--shadow);
+  background:
+    radial-gradient(circle at top right, rgba(var(--about-accent-rgb), 0.09), transparent 38%),
+    linear-gradient(135deg, rgba(250, 253, 250, 0.98), rgba(248, 243, 236, 0.96)),
+    #fff;
+  border: 1px solid rgba(var(--about-accent-rgb), 0.14);
+  border-radius: 22px;
+  padding: 34px 34px 30px;
+  box-shadow: 0 26px 60px rgba(46, 46, 44, 0.08);
   display: grid;
-  gap: 12px;
+  gap: 18px;
+}
+
+.heroEyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--about-accent);
+}
+
+.heroBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+  gap: 28px;
+  align-items: end;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 14px;
 }
 
 .title {
   margin: 0;
-  font-size: clamp(28px, 3vw, 34px);
+  font-size: clamp(38px, 5vw, 58px);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--text);
 }
 
-.subtitle {
+.heroLead {
   margin: 0;
+  max-width: 700px;
+  color: #65584c;
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.45;
+}
+
+.heroStatement {
+  border-left: 1px solid var(--about-accent-line);
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.heroStatementLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+.heroStatementText {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .card {
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 22px;
   box-shadow: var(--shadow);
+}
+
+.storyGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 18px;
+}
+
+.storyCard,
+.storyMini {
+  display: grid;
+  gap: 12px;
+  align-items: start;
+}
+
+.storyCard {
+  min-height: 220px;
+}
+
+.storyStack {
+  display: grid;
+  gap: 18px;
+}
+
+.storyMini {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.iconBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 1px solid rgba(var(--about-accent-rgb), 0.18);
+  background: linear-gradient(180deg, rgba(248, 251, 248, 1), rgba(239, 246, 239, 1));
+  color: rgba(var(--about-accent-rgb), 0.9);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.iconBadge svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  opacity: 0.9;
+}
+
+.storyContent,
+.sectionIntro {
   display: grid;
   gap: 8px;
 }
 
-.card h3 {
-  margin: 0;
-  font-size: 18px;
+.sectionIntro {
+  align-items: start;
+  margin-bottom: 18px;
 }
 
-.card p {
-  margin: 0;
-  color: var(--muted);
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.list {
+.sectionTitle {
   margin: 0;
-  padding-left: 18px;
+  font-size: 24px;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.sectionSub {
+  margin: 0;
   color: var(--muted);
+  line-height: 1.55;
+}
+
+.storyContent p,
+.sourceBlock p,
+.disclaimer,
+.closingText {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.featureSection,
+.sourceSection {
   display: grid;
   gap: 6px;
 }
 
-.pillRow {
-  display: flex;
-  flex-wrap: wrap;
+.featureSection {
+  background:
+    linear-gradient(180deg, rgba(var(--about-accent-rgb), 0.05), rgba(255, 255, 255, 0) 22%),
+    #fff;
+  border-color: rgba(var(--about-accent-rgb), 0.14);
+}
+
+.featureRows {
+  display: grid;
+}
+
+.featureRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.15fr);
+  gap: 20px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(var(--about-accent-rgb), 0.12);
+}
+
+.featureRow:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.featureHeading {
+  color: #2f4739;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.featureBody {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.sourceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sourceBlock {
+  background: #fcfaf5;
+  border: 1px solid rgba(var(--about-accent-rgb), 0.12);
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
   gap: 8px;
 }
 
-.pill {
-  padding: 6px 10px;
-  background: #f6f1ea;
-  color: var(--rootz-brown);
-  border-radius: 999px;
-  font-size: 12px;
-  border: 1px solid var(--border);
+.sourceLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--about-accent);
+}
+
+.disclaimer {
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--about-accent-rgb), 0.12);
+}
+
+.closing {
+  padding: 22px 0 0;
+}
+
+.closingInner {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+  display: grid;
+  gap: 12px;
+}
+
+.closingTitle {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.closingText {
+  font-size: 16px;
+}
+
+@media (max-width: 900px) {
+  .heroBody,
+  .storyGrid,
+  .sourceGrid,
+  .featureRow {
+    grid-template-columns: 1fr;
+  }
+
+  .heroStatement {
+    border-left: 0;
+    border-top: 1px solid var(--about-accent-line);
+    padding-left: 0;
+    padding-top: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .layout {
+    padding: 28px 16px 72px;
+    gap: 20px;
+  }
+
+  .hero,
+  .card,
+  .storyMini {
+    padding: 20px;
+  }
+
+  .iconBadge {
+    width: 26px;
+    height: 26px;
+  }
 }

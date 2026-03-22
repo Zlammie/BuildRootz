@@ -142,6 +142,16 @@ function buildDecisionSummary(decision: WorkspaceDecisionState): string {
   return parts.join(" | ");
 }
 
+function WorkspaceGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="6" width="16" height="12" rx="3" />
+      <path d="M9 6V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V6" />
+      <path d="M4 11.5h16" />
+    </svg>
+  );
+}
+
 export default function BuyerWorkspaceSidebar({
   subjectType,
   subjectId,
@@ -241,6 +251,11 @@ export default function BuyerWorkspaceSidebar({
 
     return summary.join(" | ");
   }, [decision.sentiment, notesForCurrent.length, queuedForCurrent, selectedLabels.length]);
+  const workspaceSignalCount =
+    queueItems.length +
+    notesForCurrent.length +
+    selectedLabels.length +
+    (decision.sentiment ? 1 : 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -523,8 +538,13 @@ export default function BuyerWorkspaceSidebar({
               onClick={() => setIsExpanded(true)}
               aria-label="Open workspace"
             >
-              <span className={styles.railIcon} aria-hidden="true">
-                {"<"}
+              <span className={styles.railTop}>
+                <span className={styles.railIcon} aria-hidden="true">
+                  <WorkspaceGlyph />
+                </span>
+                {workspaceSignalCount > 0 ? (
+                  <span className={styles.railBadge}>{workspaceSignalCount}</span>
+                ) : null}
               </span>
               <span className={styles.railLabel}>Workspace</span>
             </button>
@@ -533,7 +553,10 @@ export default function BuyerWorkspaceSidebar({
           <div className={styles.panel}>
             <header className={styles.header}>
               <div>
-                <h3 className={styles.title}>My Workspace</h3>
+                <h3 className={styles.title}>Your Workspace</h3>
+                <p className={styles.headerIntro}>
+                  Keep queue items, notes, labels, and decisions for this {noteSubjectLabel} in one place.
+                </p>
                 <p className={styles.contextType}>{subjectTypeLabel}</p>
                 <p className={styles.contextTitle}>{title}</p>
                 {subtitle ? <p className={styles.contextMeta}>{subtitle}</p> : null}

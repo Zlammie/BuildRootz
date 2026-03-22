@@ -75,21 +75,35 @@
   white-space: nowrap;
 }
 
-.statusOverlay_quickMoveIn {
-  background: rgba(96, 70, 12, 0.74);
+.statusOverlay_quickMoveIn,
+.statusOverlay_inventory {
+  background: var(--map-inventory);
+  color: #3b2b05;
 }
 
 .statusOverlay_model {
-  background: rgba(34, 56, 84, 0.72);
+  background: var(--map-model);
+  color: #0b3b68;
 }
 
 .statusOverlay_comingSoon {
-  background: rgba(78, 64, 54, 0.74);
+  background: var(--map-coming-soon);
+  color: #2e1b12;
 }
 
-.statusOverlay_inventory,
 .statusOverlay_available {
-  background: rgba(31, 70, 36, 0.72);
+  background: var(--map-available);
+  color: #fff;
+}
+
+.statusOverlay_construction {
+  background: #f0d0b7;
+  color: #5a3215;
+}
+
+.statusOverlay_sold {
+  background: #d5d5d5;
+  color: #3b3b3b;
 }
 
 .photoCount {
@@ -239,29 +253,49 @@
   line-height: 1;
 }
 
-.statusChip_quickMoveIn {
-  background: #f7ecd6;
-  border-color: #e7d7ad;
-  color: #62490b;
-}
-
 .statusChip_model {
-  background: #e8f0fb;
-  border-color: #cadcf4;
-  color: #2e4868;
+  background: var(--map-model);
+  border-color: var(--map-model);
+  color: #0b3b68;
 }
 
 .statusChip_comingSoon {
-  background: #f3ece3;
-  border-color: #dfd2c4;
-  color: #5a4b3d;
+  background: var(--map-coming-soon);
+  border-color: var(--map-coming-soon);
+  color: #2e1b12;
+}
+
+.statusChip_quickMoveIn,
+.statusChip_inventory,
+.statusChip_available,
+.statusChip_construction,
+.statusChip_sold {
+  border-color: transparent;
 }
 
 .statusChip_inventory,
+.statusChip_quickMoveIn {
+  background: var(--map-inventory);
+  border-color: var(--map-inventory);
+  color: #3b2b05;
+}
+
 .statusChip_available {
-  background: #eaf3e8;
-  border-color: #d0e1cc;
-  color: #355a33;
+  background: var(--map-available);
+  border-color: var(--map-available);
+  color: #fff;
+}
+
+.statusChip_construction {
+  background: #f0d0b7;
+  border-color: #f0d0b7;
+  color: #5a3215;
+}
+
+.statusChip_sold {
+  background: #d5d5d5;
+  border-color: #d5d5d5;
+  color: #3b3b3b;
 }
 
 .tagChip {

@@ -40,8 +40,8 @@ export type ListingImage = {
 };
 
 export type ListingStatusBadge = {
-  text: "Available" | "Quick Move-In" | "Under Construction" | "Sold" | "Coming Soon";
-  variant: "available" | "inventory" | "construction" | "sold" | "comingSoon";
+  text: "Available" | "Quick Move-In" | "Under Construction" | "Sold" | "Coming Soon" | "Model";
+  variant: "available" | "inventory" | "construction" | "sold" | "comingSoon" | "model";
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -294,8 +294,8 @@ export function getPrimaryImage(
   };
 }
 
-export function getStatusBadge(home?: Pick<ListingLike, "status"> | null): ListingStatusBadge {
-  const raw = cleanSegment(home?.status).toLowerCase();
+export function getStatusBadgeFromValue(status?: unknown): ListingStatusBadge {
+  const raw = cleanSegment(status).toLowerCase();
   if (raw.includes("sold")) {
     return { text: "Sold", variant: "sold" };
   }
@@ -316,10 +316,17 @@ export function getStatusBadge(home?: Pick<ListingLike, "status"> | null): Listi
   ) {
     return { text: "Quick Move-In", variant: "inventory" };
   }
+  if (raw.includes("model")) {
+    return { text: "Model", variant: "model" };
+  }
   if (raw.includes("coming")) {
     return { text: "Coming Soon", variant: "comingSoon" };
   }
   return { text: "Available", variant: "available" };
+}
+
+export function getStatusBadge(home?: Pick<ListingLike, "status"> | null): ListingStatusBadge {
+  return getStatusBadgeFromValue(home?.status);
 }
 
 export function safeLink(value?: string | null): string | null {
