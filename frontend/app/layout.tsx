@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { GoogleAnalytics } from "../components/GoogleAnalytics";
 import { Providers } from "../components/Providers";
@@ -44,7 +45,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.variable}>
         {googleAnalyticsMeasurementId ? (
-          <GoogleAnalytics measurementId={googleAnalyticsMeasurementId} />
+          <Suspense fallback={null}>
+            <GoogleAnalytics measurementId={googleAnalyticsMeasurementId} />
+          </Suspense>
         ) : null}
         <Providers>{children}</Providers>
       </body>
