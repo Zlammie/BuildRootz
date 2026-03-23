@@ -1,5 +1,7 @@
-// Mapbox Streets generally reveals minor street labels around zoom ~14.
-export const PRICE_BUBBLE_ZOOM_THRESHOLD = 14;
+// Wait until a tighter street-level zoom before switching from true-position
+// inventory markers to separated price bubbles. Showing price bubbles too early
+// makes nearby homes appear to slide off their lots while zoomed out.
+export const PRICE_BUBBLE_ZOOM_THRESHOLD = 15.25;
 export const PRICE_BUBBLE_ZOOM_HYSTERESIS = 0.2;
 
 const compactCurrencyFormatter = new Intl.NumberFormat("en-US", {
@@ -11,7 +13,9 @@ const compactCurrencyFormatter = new Intl.NumberFormat("en-US", {
 
 export type PriceBubbleMarkerClasses = {
   base: string;
+  stack: string;
   inner: string;
+  dot: string;
   active: string;
   muted: string;
 };
@@ -22,6 +26,8 @@ export type PriceBubbleMarkerOptions = {
   isActive: boolean;
   ariaLabel: string;
   offset?: [number, number];
+  dotColor?: string;
+  debugAnchor?: boolean;
 };
 
 function applyPriceBubbleOffset(
@@ -31,6 +37,28 @@ function applyPriceBubbleOffset(
   const [offsetX, offsetY] = offset || [0, 0];
   element.style.setProperty("--bubble-offset-x", `${offsetX}px`);
   element.style.setProperty("--bubble-offset-y", `${offsetY}px`);
+}
+
+function applyPriceBubbleDotColor(
+  element: HTMLButtonElement,
+  dotColor: string | undefined,
+) {
+  if (!dotColor) {
+    element.style.removeProperty("--bubble-dot-color");
+    return;
+  }
+  element.style.setProperty("--bubble-dot-color", dotColor);
+}
+
+function applyDebugAnchorFlag(
+  element: HTMLButtonElement,
+  debugAnchor: boolean | undefined,
+) {
+  if (debugAnchor) {
+    element.setAttribute("data-debug-anchor", "true");
+    return;
+  }
+  element.removeAttribute("data-debug-anchor");
 }
 
 export function formatPriceBubbleLabel(price: unknown): string {
@@ -45,14 +73,20 @@ export function createPriceBubbleMarkerElement({
   isActive,
   ariaLabel,
   offset,
+  dotColor,
+  debugAnchor,
 }: PriceBubbleMarkerOptions): HTMLButtonElement {
   const button = document.createElement("button");
+  const stack = document.createElement("span");
   const inner = document.createElement("span");
+  const dot = document.createElement("span");
 
   button.type = "button";
   button.className = classes.base;
   button.setAttribute("role", "button");
+  stack.className = classes.stack;
   inner.className = classes.inner;
+  dot.className = classes.dot;
   if (isActive) {
     button.classList.add(classes.active);
   }
@@ -62,7 +96,11 @@ export function createPriceBubbleMarkerElement({
   inner.textContent = priceLabel || "Price TBD";
   button.setAttribute("aria-label", ariaLabel);
   applyPriceBubbleOffset(button, offset);
-  button.append(inner);
+  applyPriceBubbleDotColor(button, dotColor);
+  applyDebugAnchorFlag(button, debugAnchor);
+  dot.setAttribute("aria-hidden", "true");
+  stack.append(inner, dot);
+  button.append(stack);
   return button;
 }
 
@@ -74,12 +112,13 @@ export function updatePriceBubbleMarkerElement(
     isActive,
     ariaLabel,
     offset,
+    dotColor,
+    debugAnchor,
   }: PriceBubbleMarkerOptions,
 ) {
-  const inner =
-    element.firstElementChild instanceof HTMLSpanElement ? element.firstElementChild : null;
+  const inner = element.querySelector(`.${classes.inner}`);
 
-  if (inner) {
+  if (inner instanceof HTMLSpanElement) {
     inner.textContent = priceLabel || "Price TBD";
   } else {
     element.textContent = priceLabel || "Price TBD";
@@ -88,4 +127,6 @@ export function updatePriceBubbleMarkerElement(
   element.classList.toggle(classes.active, isActive);
   element.classList.toggle(classes.muted, !priceLabel);
   applyPriceBubbleOffset(element, offset);
+  applyPriceBubbleDotColor(element, dotColor);
+  applyDebugAnchorFlag(element, debugAnchor);
 }

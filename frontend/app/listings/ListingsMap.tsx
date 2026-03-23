@@ -94,14 +94,14 @@ const INVENTORY_AUTO_REVEAL_ZOOM_HYSTERESIS = 0.2;
 const MAX_PRICE_BUBBLES = 300;
 const PRICE_BUBBLE_MIN_WIDTH = 56;
 const PRICE_BUBBLE_MAX_WIDTH = 136;
-const PRICE_BUBBLE_STACK_SPACING_X = 18;
-const PRICE_BUBBLE_STACK_SPACING_Y = 8;
-const PRICE_BUBBLE_STACK_MAX_OFFSET_X = 54;
-const PRICE_BUBBLE_STACK_MAX_OFFSET_Y = 24;
-const PRICE_BUBBLE_OVERLAP_PADDING_X = 12;
-const PRICE_BUBBLE_OVERLAP_MIN_X = 44;
-const PRICE_BUBBLE_OVERLAP_MAX_X = 96;
-const PRICE_BUBBLE_OVERLAP_Y = 26;
+const PRICE_BUBBLE_ANCHOR_OFFSET_Y = -5;
+const PRICE_BUBBLE_TAIL_HEIGHT = 8;
+const PRICE_BUBBLE_DOT_SIZE = 10;
+const PRICE_BUBBLE_DOT_GAP = 4;
+const PRICE_BUBBLE_OVERLAP_GUTTER = 2;
+const PRICE_BUBBLE_DENSE_PADDING_X = 18;
+const PRICE_BUBBLE_DENSE_PADDING_Y = 10;
+const DENSE_GROUP_EXPAND_ZOOM = PRICE_BUBBLE_ZOOM_THRESHOLD + 1.25;
 const MAP_DEBUG_STORAGE_KEY = "brz:map-debug";
 const MAP_DEBUG_SAMPLE_SIZE = 3;
 const MAP_DEBUG_DRAG_LOG_INTERVAL_MS = 120;
@@ -131,12 +131,43 @@ type PriceBubbleCandidate = {
   priceLabel: string;
   projectedX: number;
   projectedY: number;
-  estimatedWidth: number;
+  bubbleWidth: number;
+  bubbleHeight: number;
+  bounds: PriceBubbleBounds;
 };
 
 type PriceBubbleLayout = {
   offset: [number, number];
   zIndex: number;
+};
+
+type PriceBubbleBounds = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+type PriceBubbleRenderItem =
+  | {
+      kind: "single";
+      markerKey: string;
+      candidate: PriceBubbleCandidate;
+      layout: PriceBubbleLayout;
+    }
+  | {
+      kind: "group";
+      markerKey: string;
+      candidates: PriceBubbleCandidate[];
+      label: string;
+      lng: number;
+      lat: number;
+      zIndex: number;
+    };
+
+type PriceBubbleRenderPlan = {
+  renderItems: PriceBubbleRenderItem[];
+  hasDenseGroups: boolean;
 };
 
 function isValidCoordinate(lat: unknown, lng: unknown): lat is number {
@@ -243,6 +274,18 @@ function roundDebugValue(value: number): number {
   return Number(value.toFixed(2));
 }
 
+function roundRectForDebug(rect: DOMRect | undefined | null) {
+  if (!rect) return null;
+  return {
+    left: roundDebugValue(rect.left),
+    right: roundDebugValue(rect.right),
+    top: roundDebugValue(rect.top),
+    bottom: roundDebugValue(rect.bottom),
+    width: roundDebugValue(rect.width),
+    height: roundDebugValue(rect.height),
+  };
+}
+
 function isMapDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
   return (
@@ -323,22 +366,58 @@ function estimatePriceBubbleWidth(priceLabel: string): number {
   return clamp(estimated, PRICE_BUBBLE_MIN_WIDTH, PRICE_BUBBLE_MAX_WIDTH);
 }
 
-function priceBubblesOverlap(a: PriceBubbleCandidate, b: PriceBubbleCandidate): boolean {
-  const overlapThresholdX = clamp(
-    (a.estimatedWidth + b.estimatedWidth) / 2 - PRICE_BUBBLE_OVERLAP_PADDING_X,
-    PRICE_BUBBLE_OVERLAP_MIN_X,
-    PRICE_BUBBLE_OVERLAP_MAX_X,
+function buildPriceBubbleBounds(
+  projectedX: number,
+  projectedY: number,
+  bubbleWidth: number,
+  bubbleHeight: number,
+): PriceBubbleBounds {
+  return {
+    left: projectedX - bubbleWidth / 2,
+    right: projectedX + bubbleWidth / 2,
+    top: projectedY - bubbleHeight,
+    bottom: projectedY,
+  };
+}
+
+function priceBubbleBoundsOverlap(left: PriceBubbleBounds, right: PriceBubbleBounds): boolean {
+  return !(
+    left.right <= right.left + PRICE_BUBBLE_OVERLAP_GUTTER ||
+    left.left >= right.right - PRICE_BUBBLE_OVERLAP_GUTTER ||
+    left.bottom <= right.top + PRICE_BUBBLE_OVERLAP_GUTTER ||
+    left.top >= right.bottom - PRICE_BUBBLE_OVERLAP_GUTTER
   );
-  return (
-    Math.abs(a.projectedX - b.projectedX) <= overlapThresholdX &&
-    Math.abs(a.projectedY - b.projectedY) <= PRICE_BUBBLE_OVERLAP_Y
+}
+
+function inflatePriceBubbleBounds(
+  bounds: PriceBubbleBounds,
+  paddingX: number,
+  paddingY: number,
+): PriceBubbleBounds {
+  return {
+    left: bounds.left - paddingX,
+    right: bounds.right + paddingX,
+    top: bounds.top - paddingY,
+    bottom: bounds.bottom + paddingY,
+  };
+}
+
+function priceBubblesOverlap(a: PriceBubbleCandidate, b: PriceBubbleCandidate): boolean {
+  return priceBubbleBoundsOverlap(a.bounds, b.bounds);
+}
+
+function priceBubblesAreDenseNeighbors(a: PriceBubbleCandidate, b: PriceBubbleCandidate): boolean {
+  return priceBubbleBoundsOverlap(
+    inflatePriceBubbleBounds(a.bounds, PRICE_BUBBLE_DENSE_PADDING_X, PRICE_BUBBLE_DENSE_PADDING_Y),
+    inflatePriceBubbleBounds(b.bounds, PRICE_BUBBLE_DENSE_PADDING_X, PRICE_BUBBLE_DENSE_PADDING_Y),
   );
 }
 
 function buildPriceBubbleLayouts(
   candidates: PriceBubbleCandidate[],
   hoveredHomeId: string | null,
-): Map<string, PriceBubbleLayout> {
+  zoom: number,
+): PriceBubbleRenderPlan {
   const groups: PriceBubbleCandidate[][] = [];
   const sortedCandidates = [...candidates].sort(
     (a, b) =>
@@ -349,7 +428,7 @@ function buildPriceBubbleLayouts(
 
   sortedCandidates.forEach((candidate) => {
     const group = groups.find((members) =>
-      members.some((member) => priceBubblesOverlap(member, candidate)),
+      members.some((member) => priceBubblesAreDenseNeighbors(member, candidate)),
     );
     if (group) {
       group.push(candidate);
@@ -358,32 +437,73 @@ function buildPriceBubbleLayouts(
     groups.push([candidate]);
   });
 
-  const layouts = new Map<string, PriceBubbleLayout>();
+  const renderItems: PriceBubbleRenderItem[] = [];
   groups.forEach((group) => {
     const orderedMembers = [...group].sort((a, b) => a.home.id.localeCompare(b.home.id));
-    const center = (orderedMembers.length - 1) / 2;
+
+    if (orderedMembers.length > 1) {
+      const shouldUseGroupedMarker = zoom < DENSE_GROUP_EXPAND_ZOOM;
+      const hoveredMember =
+        hoveredHomeId ? orderedMembers.find((candidate) => candidate.home.id === hoveredHomeId) : null;
+
+      if (hoveredMember && !shouldUseGroupedMarker) {
+        renderItems.push({
+          kind: "single",
+          markerKey: hoveredMember.home.id,
+          candidate: hoveredMember,
+          layout: {
+            offset: [0, 0],
+            zIndex: 400,
+          },
+        });
+        return;
+      }
+
+      if (shouldUseGroupedMarker) {
+        const markerKey = `group:${orderedMembers.map((candidate) => candidate.home.id).join("|")}`;
+        const center = orderedMembers.reduce(
+          (acc, candidate) => {
+            acc.lng += candidate.home.lng;
+            acc.lat += candidate.home.lat;
+            return acc;
+          },
+          { lng: 0, lat: 0 },
+        );
+        const count = orderedMembers.length;
+        renderItems.push({
+          kind: "group",
+          markerKey,
+          candidates: orderedMembers,
+          label: `${count} home${count === 1 ? "" : "s"}`,
+          lng: center.lng / count,
+          lat: center.lat / count,
+          zIndex: orderedMembers.some((candidate) => hoveredHomeId === candidate.home.id)
+            ? 400
+            : 140,
+        });
+      }
+      return;
+    }
 
     orderedMembers.forEach((candidate, index) => {
-      const relativeIndex = index - center;
-      const offsetX = clamp(
-        relativeIndex * PRICE_BUBBLE_STACK_SPACING_X,
-        -PRICE_BUBBLE_STACK_MAX_OFFSET_X,
-        PRICE_BUBBLE_STACK_MAX_OFFSET_X,
-      );
-      const offsetY = -Math.min(
-        PRICE_BUBBLE_STACK_MAX_OFFSET_Y,
-        Math.abs(relativeIndex) * PRICE_BUBBLE_STACK_SPACING_Y,
-      );
       const isActive = hoveredHomeId === candidate.home.id;
 
-      layouts.set(candidate.home.id, {
-        offset: [offsetX, offsetY],
-        zIndex: isActive ? 400 : 100 + index,
+      renderItems.push({
+        kind: "single",
+        markerKey: candidate.home.id,
+        candidate,
+        layout: {
+          offset: [0, 0],
+          zIndex: isActive ? 400 : 100 + index,
+        },
       });
     });
   });
 
-  return layouts;
+  return {
+    renderItems,
+    hasDenseGroups: groups.some((group) => group.length > 1),
+  };
 }
 
 function getBuilderCommunityLine(
@@ -446,6 +566,12 @@ export default function ListingsMap({
   const debugStyleDataCountRef = useRef(0);
   const debugSourceDataCountRef = useRef(0);
   const debugResizeCountRef = useRef(0);
+  const debugPriceBubbleLayoutLogKeyRef = useRef("");
+  const bubbleVisibleInventoryFeatureIdsRef = useRef<Set<string>>(new Set());
+  const priceBubbleMeasureHostRef = useRef<HTMLDivElement | null>(null);
+  const priceBubbleMeasureCacheRef = useRef<Map<string, { width: number; height: number }>>(
+    new Map(),
+  );
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
   const [layersReady, setLayersReady] = useState(false);
   const [inventoryAutoRevealActive, setInventoryAutoRevealActive] = useState(false);
@@ -516,11 +642,80 @@ export default function ListingsMap({
   const priceBubbleClasses = useMemo(
     () => ({
       base: styles.mapPriceBubble,
+      stack: styles.mapPriceBubbleStack,
       inner: styles.mapPriceBubbleInner,
+      dot: styles.mapPriceBubbleDot,
       active: styles.mapPriceBubbleActive,
       muted: styles.mapPriceBubbleMuted,
     }),
     [],
+  );
+  const measurePriceBubbleDimensions = useMemo(
+    () => (priceLabel: string) => {
+      const cached = priceBubbleMeasureCacheRef.current.get(priceLabel);
+      if (cached) return cached;
+
+      const fallback = {
+        width: estimatePriceBubbleWidth(priceLabel),
+        height: 32 + PRICE_BUBBLE_TAIL_HEIGHT + PRICE_BUBBLE_DOT_GAP + PRICE_BUBBLE_DOT_SIZE,
+      };
+
+      if (typeof document === "undefined") return fallback;
+
+      let host = priceBubbleMeasureHostRef.current;
+      if (!host) {
+        host = document.createElement("div");
+        host.style.position = "fixed";
+        host.style.left = "-9999px";
+        host.style.top = "-9999px";
+        host.style.visibility = "hidden";
+        host.style.pointerEvents = "none";
+        host.style.zIndex = "-1";
+        document.body.append(host);
+        priceBubbleMeasureHostRef.current = host;
+      }
+
+      const element = createPriceBubbleMarkerElement({
+        classes: priceBubbleClasses,
+        priceLabel,
+        isActive: false,
+        ariaLabel: "",
+      });
+
+      host.append(element);
+      const stack =
+        element.querySelector(`.${styles.mapPriceBubbleStack}`) as HTMLElement | null;
+      const body =
+        element.querySelector(`.${styles.mapPriceBubbleInner}`) as HTMLElement | null;
+      const dot =
+        element.querySelector(`.${styles.mapPriceBubbleDot}`) as HTMLElement | null;
+      const stackRect = stack?.getBoundingClientRect() || null;
+      const bodyRect = body?.getBoundingClientRect() || null;
+      const dotRect = dot?.getBoundingClientRect() || null;
+      host.removeChild(element);
+
+      const measuredWidth = stackRect?.width || bodyRect?.width || fallback.width;
+      const measuredTop = Math.min(
+        stackRect?.top ?? Number.POSITIVE_INFINITY,
+        bodyRect?.top ?? Number.POSITIVE_INFINITY,
+        dotRect?.top ?? Number.POSITIVE_INFINITY,
+      );
+      const measuredBottom = Math.max(
+        stackRect?.bottom ?? Number.NEGATIVE_INFINITY,
+        bodyRect?.bottom ?? Number.NEGATIVE_INFINITY,
+        dotRect?.bottom ?? Number.NEGATIVE_INFINITY,
+      );
+      const measured = {
+        width: clamp(Math.ceil(measuredWidth), PRICE_BUBBLE_MIN_WIDTH, PRICE_BUBBLE_MAX_WIDTH),
+        height:
+          Number.isFinite(measuredTop) && Number.isFinite(measuredBottom)
+            ? Math.max(Math.ceil(measuredBottom - measuredTop), fallback.height)
+            : fallback.height,
+      };
+      priceBubbleMeasureCacheRef.current.set(priceLabel, measured);
+      return measured;
+    },
+    [priceBubbleClasses],
   );
   const debugLog = useMemo(
     () => (label: string, details?: Record<string, unknown>) => {
@@ -528,6 +723,45 @@ export default function ListingsMap({
       console.debug("[ListingsMapDebug]", label, details || {});
     },
     [debugEnabled],
+  );
+  const logPriceBubbleAlignment = useMemo(
+    () => (marker: mapboxgl.Marker, homeId: string, markerOffset: [number, number]) => {
+      if (!debugEnabled || typeof window === "undefined") return;
+      const element = marker.getElement() as HTMLButtonElement;
+      const stack =
+        element.querySelector(`.${styles.mapPriceBubbleStack}`) as HTMLElement | null;
+      const body =
+        element.querySelector(`.${styles.mapPriceBubbleInner}`) as HTMLElement | null;
+      const dot = element.querySelector(`.${styles.mapPriceBubbleDot}`) as HTMLElement | null;
+      const wrapperRect = element.getBoundingClientRect();
+      const stackRect = stack?.getBoundingClientRect() || null;
+      const bodyRect = body?.getBoundingClientRect() || null;
+      const dotRect = dot?.getBoundingClientRect() || null;
+      const anchorX = wrapperRect.left;
+      const stackCenterX = stackRect ? stackRect.left + stackRect.width / 2 : null;
+      const bodyCenterX = bodyRect ? bodyRect.left + bodyRect.width / 2 : null;
+      const dotCenterX = dotRect ? dotRect.left + dotRect.width / 2 : null;
+      debugLog("price-bubble-alignment", {
+        homeId,
+        markerOffset,
+        wrapperRect: roundRectForDebug(wrapperRect),
+        stackRect: roundRectForDebug(stackRect || undefined),
+        bodyRect: roundRectForDebug(bodyRect || undefined),
+        dotRect: roundRectForDebug(dotRect || undefined),
+        anchorX: roundDebugValue(anchorX),
+        stackCenterX: stackCenterX === null ? null : roundDebugValue(stackCenterX),
+        bodyCenterX: bodyCenterX === null ? null : roundDebugValue(bodyCenterX),
+        dotCenterX: dotCenterX === null ? null : roundDebugValue(dotCenterX),
+        tailTipX: bodyCenterX === null ? null : roundDebugValue(bodyCenterX),
+        stackVsAnchorDeltaX:
+          stackCenterX === null ? null : roundDebugValue(stackCenterX - anchorX),
+        bodyVsAnchorDeltaX:
+          bodyCenterX === null ? null : roundDebugValue(bodyCenterX - anchorX),
+        dotVsAnchorDeltaX:
+          dotCenterX === null ? null : roundDebugValue(dotCenterX - anchorX),
+      });
+    },
+    [debugEnabled, debugLog],
   );
   const captureDomSnapshot = useMemo(
     () => (label: string) => {
@@ -654,9 +888,11 @@ export default function ListingsMap({
         priceLabel,
         isActive: hoveredHomeId === homeId,
         ariaLabel,
+        dotColor: statusColors[markerStatusKey(home.status)],
+        debugAnchor: debugEnabled,
       });
     });
-  }, [homesById, hoveredHomeId, priceBubbleClasses]);
+  }, [debugEnabled, homesById, hoveredHomeId, priceBubbleClasses, statusColors]);
 
   useEffect(() => {
     if (!debugEnabled || typeof window === "undefined") return;
@@ -676,6 +912,15 @@ export default function ListingsMap({
       hoveredHomeId,
     });
   }, [activeHome, debugEnabled, debugLog, hoveredHomeId]);
+
+  useEffect(
+    () => () => {
+      priceBubbleMeasureHostRef.current?.remove();
+      priceBubbleMeasureHostRef.current = null;
+      priceBubbleMeasureCacheRef.current.clear();
+    },
+    [],
+  );
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1161,24 +1406,18 @@ export default function ListingsMap({
               6,
             ],
             "circle-opacity": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              PRICE_BUBBLE_ZOOM_THRESHOLD - 0.4,
-              1,
-              PRICE_BUBBLE_ZOOM_THRESHOLD + 0.2,
+              "case",
+              ["boolean", ["feature-state", "bubbleVisible"], false],
               0,
+              1,
             ],
             "circle-stroke-color": "#ffffff",
             "circle-stroke-width": 2,
             "circle-stroke-opacity": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              PRICE_BUBBLE_ZOOM_THRESHOLD - 0.4,
-              1,
-              PRICE_BUBBLE_ZOOM_THRESHOLD + 0.2,
+              "case",
+              ["boolean", ["feature-state", "bubbleVisible"], false],
               0,
+              1,
             ],
           },
           layout: {
@@ -1441,6 +1680,43 @@ export default function ListingsMap({
       markersById.clear();
     };
 
+    const syncBubbleVisibleFeatureState = (nextVisibleHomeIds: Set<string>) => {
+      if (!map.getSource(INVENTORY_SOURCE_ID)) return;
+      const previousVisibleHomeIds = bubbleVisibleInventoryFeatureIdsRef.current;
+
+      previousVisibleHomeIds.forEach((homeId) => {
+        if (nextVisibleHomeIds.has(homeId)) return;
+        map.setFeatureState(
+          {
+            source: INVENTORY_SOURCE_ID,
+            id: homeId,
+          },
+          { bubbleVisible: false },
+        );
+        debugLog("inventory-feature-state", {
+          homeId,
+          bubbleVisible: false,
+        });
+      });
+
+      nextVisibleHomeIds.forEach((homeId) => {
+        if (previousVisibleHomeIds.has(homeId)) return;
+        map.setFeatureState(
+          {
+            source: INVENTORY_SOURCE_ID,
+            id: homeId,
+          },
+          { bubbleVisible: true },
+        );
+        debugLog("inventory-feature-state", {
+          homeId,
+          bubbleVisible: true,
+        });
+      });
+
+      bubbleVisibleInventoryFeatureIdsRef.current = nextVisibleHomeIds;
+    };
+
     const shouldShowPriceBubbles = () => {
       const zoom = map.getZoom();
       const currentlyVisible = priceBubbleVisibleRef.current;
@@ -1453,17 +1729,20 @@ export default function ListingsMap({
 
     const syncPriceBubbles = () => {
       if (!inventoryLayerVisible || !shouldShowPriceBubbles()) {
+        syncBubbleVisibleFeatureState(new Set());
         clearMarkers();
         return;
       }
 
       const bounds = map.getBounds();
       if (!bounds) {
+        syncBubbleVisibleFeatureState(new Set());
         clearMarkers();
         return;
       }
 
       const nextVisibleIds = new Set<string>();
+      const nextBubbleVisibleHomeIds = new Set<string>();
       const visibleCandidates: PriceBubbleCandidate[] = [];
 
       for (const home of homesWithGeo) {
@@ -1474,25 +1753,177 @@ export default function ListingsMap({
         if (!priceLabel) continue;
 
         const projected = map.project([home.lng, home.lat]);
+        const { width: bubbleWidth, height: bubbleHeight } = measurePriceBubbleDimensions(priceLabel);
         visibleCandidates.push({
           home,
           priceLabel,
           projectedX: projected.x,
           projectedY: projected.y,
-          estimatedWidth: estimatePriceBubbleWidth(priceLabel),
+          bubbleWidth,
+          bubbleHeight,
+          bounds: buildPriceBubbleBounds(projected.x, projected.y, bubbleWidth, bubbleHeight),
         });
       }
 
-      const bubbleLayouts = buildPriceBubbleLayouts(visibleCandidates, hoveredHomeIdRef.current);
+      const zoom = map.getZoom();
+      const { renderItems, hasDenseGroups } = buildPriceBubbleLayouts(
+        visibleCandidates,
+        hoveredHomeIdRef.current,
+        zoom,
+      );
 
-      for (const candidate of visibleCandidates) {
-        const { home, priceLabel } = candidate;
-        nextVisibleIds.add(home.id);
+      if (debugEnabled) {
+        const representationMode = hasDenseGroups
+          ? zoom < DENSE_GROUP_EXPAND_ZOOM
+            ? "grouped-markers"
+            : "dense-dots-active-bubble"
+          : "full-price-bubbles";
+        const overlapChecks =
+          visibleCandidates.length <= 8
+            ? visibleCandidates.flatMap((candidate, index) =>
+                visibleCandidates.slice(index + 1).map((other) => ({
+                  pair: [candidate.home.id, other.home.id],
+                  overlap: priceBubblesOverlap(candidate, other),
+                  denseNeighbor: priceBubblesAreDenseNeighbors(candidate, other),
+                  reason: priceBubblesOverlap(candidate, other)
+                    ? "measured-bounds-intersect"
+                    : priceBubblesAreDenseNeighbors(candidate, other)
+                      ? "dense-neighbor-spacing"
+                      : "measured-bounds-separated",
+                  leftBounds: {
+                    left: roundDebugValue(candidate.bounds.left),
+                    right: roundDebugValue(candidate.bounds.right),
+                    top: roundDebugValue(candidate.bounds.top),
+                    bottom: roundDebugValue(candidate.bounds.bottom),
+                  },
+                  rightBounds: {
+                    left: roundDebugValue(other.bounds.left),
+                    right: roundDebugValue(other.bounds.right),
+                    top: roundDebugValue(other.bounds.top),
+                    bottom: roundDebugValue(other.bounds.bottom),
+                  },
+                })),
+              )
+            : [];
+        const layoutSample = renderItems.slice(0, 12).map((item) =>
+          item.kind === "group"
+            ? {
+                kind: item.kind,
+                markerKey: item.markerKey,
+                label: item.label,
+                count: item.candidates.length,
+                lat: roundDebugValue(item.lat),
+                lng: roundDebugValue(item.lng),
+                memberIds: item.candidates.map((candidate) => candidate.home.id),
+              }
+            : {
+                kind: item.kind,
+                markerKey: item.markerKey,
+                homeId: item.candidate.home.id,
+                address:
+                  item.candidate.home.address1 ||
+                  item.candidate.home.address ||
+                  item.candidate.home.formattedAddress,
+                lat: roundDebugValue(item.candidate.home.lat),
+                lng: roundDebugValue(item.candidate.home.lng),
+                projectedX: roundDebugValue(item.candidate.projectedX),
+                projectedY: roundDebugValue(item.candidate.projectedY),
+                bubbleWidth: item.candidate.bubbleWidth,
+                bubbleHeight: item.candidate.bubbleHeight,
+                bounds: {
+                  left: roundDebugValue(item.candidate.bounds.left),
+                  right: roundDebugValue(item.candidate.bounds.right),
+                  top: roundDebugValue(item.candidate.bounds.top),
+                  bottom: roundDebugValue(item.candidate.bounds.bottom),
+                },
+                offset: item.layout.offset,
+              },
+        );
+        const layoutLogKey = JSON.stringify(layoutSample);
+        if (debugPriceBubbleLayoutLogKeyRef.current !== layoutLogKey) {
+          debugPriceBubbleLayoutLogKeyRef.current = layoutLogKey;
+          debugLog("price-bubble-layout", {
+            zoom: roundDebugValue(zoom),
+            visibleCount: visibleCandidates.length,
+            hasDenseGroups,
+            denseGroupExpandZoom: roundDebugValue(DENSE_GROUP_EXPAND_ZOOM),
+            representationMode,
+            overlapReason: hasDenseGroups
+              ? "dense-neighbor-grouping"
+              : "all-dense-neighbor-bounds-separated",
+            overlapChecks,
+            sample: layoutSample,
+          });
+        }
+      }
 
+      for (const item of renderItems) {
+        nextVisibleIds.add(item.markerKey);
+
+        if (item.kind === "group") {
+          const existing = markersById.get(item.markerKey);
+          const ariaLabel = `Zoom in to view ${item.label} in this area`;
+
+          if (!existing) {
+          const element = createPriceBubbleMarkerElement({
+            classes: priceBubbleClasses,
+            priceLabel: item.label,
+            isActive: false,
+            ariaLabel,
+            debugAnchor: debugEnabled,
+          });
+
+            element.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const bounds = new mapboxgl.LngLatBounds();
+              item.candidates.forEach((candidate) => {
+                bounds.extend([candidate.home.lng, candidate.home.lat]);
+              });
+              map.fitBounds(bounds, {
+                padding: 72,
+                duration: 600,
+                maxZoom: Math.max(17.5, map.getZoom() + 1.25),
+              });
+            });
+
+            const marker = new mapboxgl.Marker({
+              element,
+              anchor: "bottom",
+              offset: [0, PRICE_BUBBLE_ANCHOR_OFFSET_Y],
+            })
+              .setLngLat([item.lng, item.lat])
+              .addTo(map);
+
+            element.style.zIndex = String(item.zIndex);
+            markersById.set(item.markerKey, marker);
+            logPriceBubbleAlignment(marker, item.markerKey, [0, PRICE_BUBBLE_ANCHOR_OFFSET_Y]);
+            debugLog("group-marker-created", {
+              markerKey: item.markerKey,
+              count: item.candidates.length,
+            });
+          } else {
+            existing.setLngLat([item.lng, item.lat]);
+            updatePriceBubbleMarkerElement(existing.getElement() as HTMLButtonElement, {
+              classes: priceBubbleClasses,
+              priceLabel: item.label,
+              isActive: false,
+              ariaLabel,
+              debugAnchor: debugEnabled,
+            });
+            (existing.getElement() as HTMLButtonElement).style.zIndex = String(item.zIndex);
+            logPriceBubbleAlignment(existing, item.markerKey, [0, PRICE_BUBBLE_ANCHOR_OFFSET_Y]);
+          }
+          continue;
+        }
+
+        const { home, priceLabel } = item.candidate;
+        nextBubbleVisibleHomeIds.add(home.id);
         const ariaLabel = `Open listing at ${formatAddress(home)} priced ${priceLabel}`;
         const isActive = hoveredHomeIdRef.current === home.id;
-        const layout = bubbleLayouts.get(home.id);
-        const existing = markersById.get(home.id);
+        const layout = item.layout;
+        const existing = markersById.get(item.markerKey);
+        const dotColor = statusColors[markerStatusKey(home.status)];
 
         if (!existing) {
           const element = createPriceBubbleMarkerElement({
@@ -1500,7 +1931,9 @@ export default function ListingsMap({
             priceLabel,
             isActive,
             ariaLabel,
-            offset: layout?.offset,
+            offset: layout.offset,
+            dotColor,
+            debugAnchor: debugEnabled,
           });
 
           element.addEventListener("click", (event) => {
@@ -1526,13 +1959,14 @@ export default function ListingsMap({
           const marker = new mapboxgl.Marker({
             element,
             anchor: "bottom",
-            offset: [0, 0],
+            offset: [0, PRICE_BUBBLE_ANCHOR_OFFSET_Y],
           })
             .setLngLat([home.lng, home.lat])
             .addTo(map);
 
-          element.style.zIndex = String(layout?.zIndex || (isActive ? 400 : 100));
-          markersById.set(home.id, marker);
+          element.style.zIndex = String(layout.zIndex || (isActive ? 400 : 100));
+          markersById.set(item.markerKey, marker);
+          logPriceBubbleAlignment(marker, home.id, [0, PRICE_BUBBLE_ANCHOR_OFFSET_Y]);
           debugLog("marker-created", {
             homeId: home.id,
           });
@@ -1551,12 +1985,17 @@ export default function ListingsMap({
           priceLabel,
           isActive,
           ariaLabel,
-          offset: layout?.offset,
+          offset: layout.offset,
+          dotColor,
+          debugAnchor: debugEnabled,
         });
         (existing.getElement() as HTMLButtonElement).style.zIndex = String(
-          layout?.zIndex || (isActive ? 400 : 100),
+          layout.zIndex || (isActive ? 400 : 100),
         );
+        logPriceBubbleAlignment(existing, home.id, [0, PRICE_BUBBLE_ANCHOR_OFFSET_Y]);
       }
+
+      syncBubbleVisibleFeatureState(nextBubbleVisibleHomeIds);
 
       markersById.forEach((marker, homeId) => {
         if (nextVisibleIds.has(homeId)) return;
@@ -1591,6 +2030,7 @@ export default function ListingsMap({
       map.off("zoom", scheduleSync);
       map.off("moveend", scheduleSync);
       map.off("zoomend", scheduleSync);
+      syncBubbleVisibleFeatureState(new Set());
       if (frameId !== null && typeof window !== "undefined") {
         window.cancelAnimationFrame(frameId);
       }
@@ -1601,6 +2041,7 @@ export default function ListingsMap({
     homesWithGeo,
     inventoryLayerVisible,
     layersReady,
+    measurePriceBubbleDimensions,
     onHoverHome,
     priceBubbleClasses,
     router,

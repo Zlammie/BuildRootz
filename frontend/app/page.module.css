@@ -643,6 +643,7 @@
   box-shadow: 0 16px 26px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   z-index: 2;
+  pointer-events: none;
 }
 
 .mapSelectionClose {
@@ -813,8 +814,12 @@
 .mapPriceBubble {
   --bubble-offset-x: 0px;
   --bubble-offset-y: 0px;
+  --bubble-dot-color: var(--rootz-green);
   position: relative;
-  display: inline-flex;
+  display: block;
+  width: 0;
+  height: 0;
+  overflow: visible;
   padding: 0;
   border: 0;
   background: transparent;
@@ -822,6 +827,30 @@
   font: inherit;
   line-height: 1;
   cursor: pointer;
+}
+
+.mapPriceBubble[data-debug-anchor="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -56px;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(220, 38, 38, 0.55);
+  pointer-events: none;
+}
+
+.mapPriceBubbleStack {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(calc(-50% + var(--bubble-offset-x)), var(--bubble-offset-y));
+  transition: transform 0.14s ease;
 }
 
 .mapPriceBubbleInner {
@@ -843,16 +872,24 @@
   line-height: 1;
   white-space: nowrap;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  transform: translate(var(--bubble-offset-x), var(--bubble-offset-y));
-  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease,
-    border-color 0.14s ease;
+  transition: box-shadow 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.mapPriceBubbleDot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bubble-dot-color);
+  border: 2px solid #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
 }
 
 .mapPriceBubbleInner::after {
   content: "";
   position: absolute;
-  left: calc(50% - var(--bubble-offset-x));
-  bottom: calc(-6px - var(--bubble-offset-y));
+  left: 50%;
+  bottom: -8px;
   width: 10px;
   height: 10px;
   transform: translateX(-50%) rotate(45deg);
@@ -861,8 +898,11 @@
   background: rgba(255, 255, 255, 0.96);
 }
 
+.mapPriceBubble:hover .mapPriceBubbleStack {
+  transform: translate(calc(-50% + var(--bubble-offset-x)), calc(var(--bubble-offset-y) - 1px));
+}
+
 .mapPriceBubble:hover .mapPriceBubbleInner {
-  transform: translate(var(--bubble-offset-x), calc(var(--bubble-offset-y) - 1px));
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
 }
 
@@ -885,6 +925,10 @@
   border-right-color: rgba(63, 92, 57, 0.6);
   border-bottom-color: rgba(63, 92, 57, 0.6);
   background: #f0f8ed;
+}
+
+.mapPriceBubbleActive .mapPriceBubbleDot {
+  background: #5f7d5a;
 }
 
 .mapPriceBubbleMuted .mapPriceBubbleInner {
