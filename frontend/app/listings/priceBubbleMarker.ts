@@ -21,7 +21,17 @@ export type PriceBubbleMarkerOptions = {
   priceLabel: string;
   isActive: boolean;
   ariaLabel: string;
+  offset?: [number, number];
 };
+
+function applyPriceBubbleOffset(
+  element: HTMLButtonElement,
+  offset: [number, number] | undefined,
+) {
+  const [offsetX, offsetY] = offset || [0, 0];
+  element.style.setProperty("--bubble-offset-x", `${offsetX}px`);
+  element.style.setProperty("--bubble-offset-y", `${offsetY}px`);
+}
 
 export function formatPriceBubbleLabel(price: unknown): string {
   if (typeof price !== "number" || !Number.isFinite(price) || price <= 0) return "";
@@ -34,6 +44,7 @@ export function createPriceBubbleMarkerElement({
   priceLabel,
   isActive,
   ariaLabel,
+  offset,
 }: PriceBubbleMarkerOptions): HTMLButtonElement {
   const button = document.createElement("button");
   const inner = document.createElement("span");
@@ -50,6 +61,7 @@ export function createPriceBubbleMarkerElement({
   }
   inner.textContent = priceLabel || "Price TBD";
   button.setAttribute("aria-label", ariaLabel);
+  applyPriceBubbleOffset(button, offset);
   button.append(inner);
   return button;
 }
@@ -61,6 +73,7 @@ export function updatePriceBubbleMarkerElement(
     priceLabel,
     isActive,
     ariaLabel,
+    offset,
   }: PriceBubbleMarkerOptions,
 ) {
   const inner =
@@ -74,4 +87,5 @@ export function updatePriceBubbleMarkerElement(
   element.setAttribute("aria-label", ariaLabel);
   element.classList.toggle(classes.active, isActive);
   element.classList.toggle(classes.muted, !priceLabel);
+  applyPriceBubbleOffset(element, offset);
 }

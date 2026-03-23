@@ -360,12 +360,7 @@ function buildPriceBubbleLayouts(
 
   const layouts = new Map<string, PriceBubbleLayout>();
   groups.forEach((group) => {
-    const orderedMembers = [...group].sort(
-      (a, b) =>
-        a.projectedX - b.projectedX ||
-        a.projectedY - b.projectedY ||
-        a.home.id.localeCompare(b.home.id),
-    );
+    const orderedMembers = [...group].sort((a, b) => a.home.id.localeCompare(b.home.id));
     const center = (orderedMembers.length - 1) / 2;
 
     orderedMembers.forEach((candidate, index) => {
@@ -1505,6 +1500,7 @@ export default function ListingsMap({
             priceLabel,
             isActive,
             ariaLabel,
+            offset: layout?.offset,
           });
 
           element.addEventListener("click", (event) => {
@@ -1530,7 +1526,7 @@ export default function ListingsMap({
           const marker = new mapboxgl.Marker({
             element,
             anchor: "bottom",
-            offset: layout?.offset || [0, 0],
+            offset: [0, 0],
           })
             .setLngLat([home.lng, home.lat])
             .addTo(map);
@@ -1550,12 +1546,12 @@ export default function ListingsMap({
         ) {
           existing.setLngLat([home.lng, home.lat]);
         }
-        existing.setOffset(layout?.offset || [0, 0]);
         updatePriceBubbleMarkerElement(existing.getElement() as HTMLButtonElement, {
           classes: priceBubbleClasses,
           priceLabel,
           isActive,
           ariaLabel,
+          offset: layout?.offset,
         });
         (existing.getElement() as HTMLButtonElement).style.zIndex = String(
           layout?.zIndex || (isActive ? 400 : 100),
