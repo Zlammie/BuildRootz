@@ -1217,6 +1217,75 @@ test("publicHomes supports unpublishMissingHomes soft deactivation", async () =>
   assert.equal(scraperHome.isActive, true);
 });
 
+test("unpublishMissingHomes deactivates only within the matching keepupCommunityId scope", async () => {
+  const companyId = oid().toHexString();
+  const publicCommunityId = oid().toHexString();
+  await insertPublicCommunity(publicCommunityId, "Willow Grove");
+
+  const initial = await postBundle({
+    meta: { keepupCompanyId: companyId, requestedAt: nowIso(), publisherVersion: "keepup-test" },
+    publicHomes: [
+      {
+        companyId,
+        publicCommunityId,
+        keepupCommunityId: "willow-grove-th",
+        keepupListingId: "th-home-1",
+        keepupFloorPlanId: "th-plan",
+        status: "Available",
+      },
+      {
+        companyId,
+        publicCommunityId,
+        keepupCommunityId: "willow-grove-th",
+        keepupListingId: "th-home-2",
+        keepupFloorPlanId: "th-plan",
+        status: "Available",
+      },
+      {
+        companyId,
+        publicCommunityId,
+        keepupCommunityId: "willow-grove-45s",
+        keepupListingId: "45-home-1",
+        keepupFloorPlanId: "45-plan",
+        status: "Available",
+      },
+    ],
+  });
+  assert.equal(initial.status, 200);
+  assert.equal(initial.body.counts.publicHomesUpserted, 3);
+
+  const second = await postBundle({
+    meta: {
+      keepupCompanyId: companyId,
+      requestedAt: nowIso(),
+      publisherVersion: "keepup-test",
+      unpublishMissingHomes: true,
+    },
+    publicHomes: [
+      {
+        companyId,
+        publicCommunityId,
+        keepupCommunityId: "willow-grove-th",
+        keepupListingId: "th-home-1",
+        keepupFloorPlanId: "th-plan",
+        status: "Available",
+      },
+    ],
+  });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.ok, true);
+  assert.equal(second.body.counts.publicHomesUpserted, 1);
+  assert.equal(second.body.counts.publicHomesDeactivated, 1);
+
+  const thHome1 = await findKeepupHome("th-home-1");
+  const thHome2 = await findKeepupHome("th-home-2");
+  const fortyFiveHome1 = await findKeepupHome("45-home-1");
+
+  assert.equal(thHome1.isActive, true);
+  assert.equal(thHome2.isActive, false);
+  assert.equal(fortyFiveHome1.isActive, true);
+});
+
 test("legacy publicHomes without source are upgraded to keepup ownership when republished", async () => {
   const companyId = oid().toHexString();
   const publicCommunityId = oid().toHexString();

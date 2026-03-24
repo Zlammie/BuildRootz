@@ -173,6 +173,37 @@ function keepupOwnedPublicHomeFilter() {
   };
 }
 
+function keepupBundleDebugEnabled() {
+  return process.env.NODE_ENV !== "production" || process.env.DEBUG_KEEPUP_BUNDLE === "1";
+}
+
+function logKeepupBundleDebug(event, payload) {
+  if (!keepupBundleDebugEnabled()) return;
+  try {
+    console.info(event, JSON.stringify(payload));
+  } catch (_err) {
+    console.info(event, payload);
+  }
+}
+
+function normalizeKeepupCommunityScopeValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function buildKeepupCommunityScopeFilter(keepupCommunityId) {
+  const normalized = normalizeKeepupCommunityScopeValue(keepupCommunityId);
+  if (normalized) {
+    return { keepupCommunityId: normalized };
+  }
+  return {
+    $or: [
+      { keepupCommunityId: { $exists: false } },
+      { keepupCommunityId: null },
+      { keepupCommunityId: "" },
+    ],
+  };
+}
+
 function sanitizeByRule(value, rule, errors, path) {
   if (value === null) return null;
   if (rule === "string") {
@@ -724,8 +755,9 @@ function publicHomeStableKey(stableId) {
   return String(stableId || "").trim();
 }
 
-function publicHomeScopeKey(companyIdString, publicCommunityIdString) {
-  return `${companyIdString}::${publicCommunityIdString}`;
+function publicHomeScopeKey(companyIdString, publicCommunityIdString, keepupCommunityId) {
+  const scopeId = normalizeKeepupCommunityScopeValue(keepupCommunityId) || "__missing_keepupCommunityId__";
+  return `${companyIdString}::${publicCommunityIdString}::${scopeId}`;
 }
 
 function buildPublicHomeSourceDoc(entry, publishedAt, existingDoc) {
@@ -1212,6 +1244,19 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
     const keepupCompanyId = typeof meta.keepupCompanyId === "string" ? meta.keepupCompanyId.trim() : "";
     const unpublishMissingHomes = meta.unpublishMissingHomes === true;
     const requestedAt = toValidDate(meta.requestedAt);
+    logKeepupBundleDebug("[internal publish keepup bundle][meta]", {
+      keepupCompanyId: keepupCompanyId || null,
+      unpublishMissingHomes,
+      requestedAt: requestedAt ? requestedAt.toISOString() : null,
+      publisherVersion: typeof meta.publisherVersion === "string" ? meta.publisherVersion.trim() || null : null,
+      counts: {
+        communities: Array.isArray(payload.communities) ? payload.communities.length : 0,
+        builderInCommunities: Array.isArray(payload.builderInCommunities) ? payload.builderInCommunities.length : 0,
+        planCatalog: Array.isArray(payload.planCatalog) ? payload.planCatalog.length : 0,
+        planOfferings: Array.isArray(payload.planOfferings) ? payload.planOfferings.length : 0,
+        publicHomes: Array.isArray(payload.publicHomes) ? payload.publicHomes.length : 0,
+      },
+    });
 
     const communities = Array.isArray(payload.communities)
       ? payload.communities.map((entry, i) => sanitizePublicCommunity(entry, i, validationErrors)).filter(Boolean)
@@ -1655,6 +1700,7 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
 
       for (const entry of homeEntries) {
         const key = publicHomeKey(entry.companyIdString, entry.sourceHomeId);
+        const scopeKeepupCommunityId = normalizeKeepupCommunityScopeValue(entry.patch?.keepupCommunityId);
         const existingByStableId = existingHomesByStableId.get(publicHomeStableKey(entry.stableId)) || null;
         if (existingByStableId && String(existingByStableId.companyId) !== entry.companyIdString) {
           warnings.push({
@@ -1704,11 +1750,16 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
           continue;
         }
 
-      const scopeKey = publicHomeScopeKey(entry.companyIdString, entry.publicCommunityIdString);
+      const scopeKey = publicHomeScopeKey(
+        entry.companyIdString,
+        entry.publicCommunityIdString,
+        scopeKeepupCommunityId,
+      );
       if (!deactivationScopes.has(scopeKey)) {
           deactivationScopes.set(scopeKey, {
             companyId: entry.companyId,
             publicCommunityId: entry.publicCommunityId,
+            keepupCommunityId: scopeKeepupCommunityId || null,
             stableIds: new Set(),
             sourceHomeIds: new Set(),
           });
@@ -1741,6 +1792,25 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
           setOnInsertDoc.stableId = entry.stableId;
         }
 
+        logKeepupBundleDebug("[internal publish keepup bundle][publicHomes:upsertCandidate]", {
+          companyId: entry.companyIdString,
+          publicCommunityId: entry.publicCommunityIdString,
+          keepupCommunityId: scopeKeepupCommunityId || null,
+          stableId: entry.stableId,
+          sourceHomeId: entry.sourceHomeId,
+          keepupListingId: entry.keepupListingId || null,
+          keepupLotId: entry.keepupLotId || null,
+          keepupFloorPlanId: entry.keepupFloorPlanId || null,
+          matchedExistingId: matchedExistingDoc ? String(matchedExistingDoc._id) : null,
+          matchedBy: existingByStableId
+            ? "stableId"
+            : matchedExistingDoc
+              ? "companyId+sourceHomeId"
+              : "insert",
+          matchedExistingStableId: matchedExistingDoc?.stableId || null,
+          matchedExistingSourceHomeId: matchedExistingDoc?.sourceHomeId || null,
+        });
+
         homeBulkOps.push({
           updateOne: {
             filter: matchedExistingDoc ? { _id: matchedExistingDoc._id } : { stableId: entry.stableId },
@@ -1756,6 +1826,9 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
     if (homeBulkOps.length) {
       await PublicHome.bulkWrite(homeBulkOps, { ordered: false });
       counts.publicHomesUpserted += homeBulkOps.length;
+      logKeepupBundleDebug("[internal publish keepup bundle][publicHomes:bulkWrite]", {
+        operations: homeBulkOps.length,
+      });
     }
 
     if (missingHomePlanRefsMap.size) {
@@ -1768,15 +1841,59 @@ router.post("/bundle", requireInternalApiKey, async (req, res) => {
 
     if (unpublishMissingHomes && deactivationScopes.size) {
       for (const [, scope] of deactivationScopes.entries()) {
+        const deactivationQuery = {
+          companyId: scope.companyId,
+          publicCommunityId: scope.publicCommunityId,
+          $and: [
+            keepupOwnedPublicHomeFilter(),
+            buildKeepupCommunityScopeFilter(scope.keepupCommunityId),
+            { stableId: { $nin: Array.from(scope.stableIds) } },
+            { sourceHomeId: { $nin: Array.from(scope.sourceHomeIds) } },
+            { isActive: { $ne: false } },
+          ],
+        };
+        if (keepupBundleDebugEnabled()) {
+          const docsToDeactivate = await PublicHome.collection.find(
+            deactivationQuery,
+            {
+              projection: {
+                _id: 1,
+                stableId: 1,
+                sourceHomeId: 1,
+                keepupCommunityId: 1,
+                keepupFloorPlanId: 1,
+                keepupListingId: 1,
+                keepupLotId: 1,
+                address1: 1,
+                formattedAddress: 1,
+                isActive: 1,
+              },
+            },
+          ).toArray();
+          logKeepupBundleDebug("[internal publish keepup bundle][publicHomes:deactivate:selection]", {
+            companyId: String(scope.companyId),
+            publicCommunityId: String(scope.publicCommunityId),
+            keepupCommunityId: scope.keepupCommunityId || null,
+            scopeType: scope.keepupCommunityId ? "keepupCommunityId" : "missing_keepupCommunityId_only",
+            incomingStableIds: Array.from(scope.stableIds),
+            incomingSourceHomeIds: Array.from(scope.sourceHomeIds),
+            selectedCount: docsToDeactivate.length,
+            selectedHomes: docsToDeactivate.map((doc) => ({
+              id: String(doc._id),
+              stableId: doc.stableId || null,
+              sourceHomeId: doc.sourceHomeId || null,
+              keepupCommunityId: doc.keepupCommunityId || null,
+              keepupFloorPlanId: doc.keepupFloorPlanId || null,
+              keepupListingId: doc.keepupListingId || null,
+              keepupLotId: doc.keepupLotId || null,
+              address1: doc.address1 || null,
+              formattedAddress: doc.formattedAddress || null,
+              isActive: doc.isActive !== false,
+            })),
+          });
+        }
         const result = await PublicHome.collection.updateMany(
-          {
-            companyId: scope.companyId,
-            publicCommunityId: scope.publicCommunityId,
-            ...keepupOwnedPublicHomeFilter(),
-            stableId: { $nin: Array.from(scope.stableIds) },
-            sourceHomeId: { $nin: Array.from(scope.sourceHomeIds) },
-            isActive: { $ne: false },
-          },
+          deactivationQuery,
           {
             $set: {
               isActive: false,
