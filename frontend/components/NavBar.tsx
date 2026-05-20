@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { getWorkspaceAdapter } from "../lib/workspace/getWorkspaceAdapter";
@@ -8,8 +9,59 @@ import { extractWorkspaceQueueItems, sanitizeWorkspaceStorageSnapshot } from "..
 import { subscribeWorkspaceSync } from "../lib/workspace/sync";
 import styles from "./navBar.module.css";
 
+type MobileNavIcon = "home" | "browse" | "map" | "saved" | "account";
+
+function MobileIcon({ icon }: { icon: MobileNavIcon }) {
+  if (icon === "home") {
+    return (
+      <svg className={styles.mobileIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4.5 11.2 12 5l7.5 6.2" />
+        <path d="M6.8 10.6v8h10.4v-8" />
+        <path d="M10 18.6v-5h4v5" />
+      </svg>
+    );
+  }
+
+  if (icon === "browse") {
+    return (
+      <svg className={styles.mobileIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M5 6.5h14" />
+        <path d="M5 12h14" />
+        <path d="M5 17.5h9" />
+      </svg>
+    );
+  }
+
+  if (icon === "map") {
+    return (
+      <svg className={styles.mobileIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 18.5 4.5 20V6L9 4.5l6 1.9L19.5 5v14L15 20.5z" />
+        <path d="M9 4.5v14" />
+        <path d="M15 6.4v14.1" />
+      </svg>
+    );
+  }
+
+  if (icon === "saved") {
+    return (
+      <svg className={styles.mobileIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M7 5.5h10v14l-5-3.2-5 3.2z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={styles.mobileIcon} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5.5 19c.9-3.4 3.2-5.2 6.5-5.2s5.6 1.8 6.5 5.2" />
+    </svg>
+  );
+}
+
 export default function NavBar() {
   const { user, logout, counts } = useAuth();
+  const pathname = usePathname();
+  const [currentSearch, setCurrentSearch] = useState("");
   const isAuthenticated = Boolean(user);
   const userId = typeof user?.id === "string" ? user.id : null;
   const workspaceAdapter = useMemo(
@@ -53,6 +105,59 @@ export default function NavBar() {
       void refreshWorkspaceQueueCount();
     });
   }, [refreshWorkspaceQueueCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const syncSearch = () => setCurrentSearch(window.location.search);
+    syncSearch();
+    window.addEventListener("popstate", syncSearch);
+    window.addEventListener("brz:navigation-state-change", syncSearch);
+    return () => {
+      window.removeEventListener("popstate", syncSearch);
+      window.removeEventListener("brz:navigation-state-change", syncSearch);
+    };
+  }, [pathname]);
+
+  const mobileListingView = new URLSearchParams(currentSearch).get("view");
+  const handleMobileNavClick = (href: string) => {
+    const queryIndex = href.indexOf("?");
+    setCurrentSearch(queryIndex >= 0 ? href.slice(queryIndex) : "");
+  };
+
+  const mobileNavItems = [
+    {
+      href: "/",
+      label: "Home",
+      icon: "home" as const,
+      active: pathname === "/",
+    },
+    {
+      href: "/listings",
+      label: "Browse",
+      icon: "browse" as const,
+      active: pathname === "/listings" && mobileListingView !== "map",
+    },
+    {
+      href: "/listings?view=map",
+      label: "Map",
+      icon: "map" as const,
+      active: pathname === "/listings" && mobileListingView === "map",
+    },
+    {
+      href: "/saved",
+      label: "Saved",
+      icon: "saved" as const,
+      active: pathname === "/saved",
+      count: counts.savedHomes,
+    },
+    {
+      href: user ? "/account" : "/login",
+      label: "Account",
+      icon: "account" as const,
+      active: pathname === "/account" || pathname === "/login" || pathname === "/signup",
+    },
+  ];
 
   return (
     <>
@@ -134,24 +239,23 @@ export default function NavBar() {
           </div>
         </div>
         <div className={styles.navMobile}>
-          <Link className={styles.navLinkMobile} href="/">
-            Browse
-          </Link>
-          <Link className={styles.navLinkMobile} href="/#map">
-            Map
-          </Link>
-          <Link className={styles.navLinkMobile} href="/workspace">
-            <span>Workspace</span>
-            {workspaceQueueCount > 0 ? (
-              <span className={styles.mobileCount}>{workspaceQueueCount}</span>
-            ) : null}
-          </Link>
-          <Link className={styles.navLinkMobile} href="/saved">
-            Saved
-          </Link>
-          <Link className={styles.navLinkMobile} href="/account">
-            Account
-          </Link>
+          {mobileNavItems.map((item) => (
+            <Link
+              key={item.label}
+              className={`${styles.navLinkMobile} ${item.active ? styles.navLinkMobileActive : ""}`}
+              href={item.href}
+              onClick={() => handleMobileNavClick(item.href)}
+              aria-current={item.active ? "page" : undefined}
+            >
+              <span className={styles.mobileIconWrap}>
+                <MobileIcon icon={item.icon} />
+                {item.count && item.count > 0 ? (
+                  <span className={styles.mobileCount}>{item.count}</span>
+                ) : null}
+              </span>
+              <span className={styles.mobileNavLabel}>{item.label}</span>
+            </Link>
+          ))}
         </div>
       </nav>
     </>

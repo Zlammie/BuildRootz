@@ -1503,10 +1503,17 @@
   }
 
   .viewModeToggle {
-    display: none;
+    display: none !important;
+  }
+
+  .viewModeSplitBtn {
+    display: none !important;
   }
 
   .mobileViewModeBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     min-height: 44px;
     border: 1px solid var(--border);

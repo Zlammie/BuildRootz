@@ -438,6 +438,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     nextParams.set("view", viewMode);
     const query = nextParams.toString();
     window.history.replaceState({}, "", query ? `${pathname}?${query}` : pathname);
+    window.dispatchEvent(new Event("brz:navigation-state-change"));
   }, [pathname, searchParams, viewMode, viewModeReady]);
 
   useEffect(() => {

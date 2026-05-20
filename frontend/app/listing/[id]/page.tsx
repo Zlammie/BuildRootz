@@ -864,50 +864,93 @@ export default async function ListingPage({
   const price = formatPrice(listing);
   const badge = getStatusBadge(listing);
   const address = formatAddress(listing);
-  const summaryItems: Array<{ key: string; label: string; href?: string | null }> = [];
+  const summaryItems: Array<{
+    key: string;
+    label: string;
+    value: string;
+    displayLabel: string;
+    href?: string | null;
+  }> = [];
   if (typeof listing.beds === "number" && Number.isFinite(listing.beds) && listing.beds > 0) {
+    const bedsValue = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(listing.beds);
     summaryItems.push({
       key: "beds",
-      label: `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(listing.beds)} bd`,
+      label: "Beds",
+      value: bedsValue,
+      displayLabel: `${bedsValue} bd`,
     });
   }
   const bathLabel = formatBathLabel(listing.baths);
-  if (bathLabel) summaryItems.push({ key: "baths", label: bathLabel });
-  if (typeof listing.sqft === "number" && Number.isFinite(listing.sqft) && listing.sqft > 0) {
+  if (bathLabel) {
     summaryItems.push({
-      key: "sqft",
-      label: `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(listing.sqft))} sqft`,
+      key: "baths",
+      label: "Baths",
+      value: bathLabel.replace(/\s*ba$/, ""),
+      displayLabel: bathLabel,
     });
   }
-  if (typeof listing.garage === "number" && Number.isFinite(listing.garage) && listing.garage > 0) {
-    summaryItems.push({ key: "garage", label: `${listing.garage} car garage` });
+  if (typeof listing.sqft === "number" && Number.isFinite(listing.sqft) && listing.sqft > 0) {
+    const sqftValue = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(
+      Math.round(listing.sqft),
+    );
+    summaryItems.push({
+      key: "sqft",
+      label: "Sqft",
+      value: sqftValue,
+      displayLabel: `${sqftValue} sqft`,
+    });
   }
   if (
     typeof planCatalog?.stories === "number" &&
     Number.isFinite(planCatalog.stories) &&
     planCatalog.stories > 0
   ) {
+    const storiesValue = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(
+      planCatalog.stories,
+    );
     summaryItems.push({
       key: "stories",
-      label: `${planCatalog.stories} ${planCatalog.stories === 1 ? "story" : "stories"}`,
+      label: "Stories",
+      value: storiesValue,
+      displayLabel: `${storiesValue} ${planCatalog.stories === 1 ? "story" : "stories"}`,
+    });
+  }
+  if (typeof listing.garage === "number" && Number.isFinite(listing.garage) && listing.garage > 0) {
+    summaryItems.push({
+      key: "garage",
+      label: "Garage",
+      value: `${listing.garage} car`,
+      displayLabel: `${listing.garage} car garage`,
     });
   }
   if (builderLabel) {
     summaryItems.push({
       key: "builder",
-      label: `Builder: ${builderLabel}`,
+      label: "Builder",
+      value: builderLabel,
+      displayLabel: `Builder: ${builderLabel}`,
       href: builderHref,
     });
   }
   const planName = cleanText(listing.planName) || cleanText(planCatalog?.name);
   if (planName) {
-    summaryItems.push({ key: "plan", label: `Plan Name: ${planName}` });
+    summaryItems.push({
+      key: "plan",
+      label: "Plan",
+      value: planName,
+      displayLabel: `Plan Name: ${planName}`,
+    });
   }
   const lotSize =
     cleanText(listing.lotSize) ||
     (communityProductTypes.length ? communityProductTypes.join(", ") : null);
   if (lotSize) {
-    summaryItems.push({ key: "lot", label: `Lot size: ${lotSize}` });
+    summaryItems.push({
+      key: "lot",
+      label: "Lot",
+      value: lotSize,
+      displayLabel: `Lot size: ${lotSize}`,
+    });
   }
   const primaryImage = getPrimaryImage(listing, builderProfile, community);
   const galleryUrls = Array.from(
@@ -1070,11 +1113,26 @@ export default async function ListingPage({
                 {summaryItems.map((item, index) => (
                   <Fragment key={item.key}>
                     {item.href ? (
-                      <Link className={styles.summaryLink} href={item.href}>
-                        {item.label}
+                      <Link
+                        className={`${styles.summaryItem} ${styles.summaryLink} ${
+                          styles[`summaryItem_${item.key}`] || ""
+                        }`}
+                        href={item.href}
+                      >
+                        <span className={styles.summaryDesktopText}>{item.displayLabel}</span>
+                        <span className={styles.summaryMobileLabel}>{item.label}</span>
+                        <span className={styles.summaryMobileValue}>{item.value}</span>
                       </Link>
                     ) : (
-                      <span>{item.label}</span>
+                      <span
+                        className={`${styles.summaryItem} ${
+                          styles[`summaryItem_${item.key}`] || ""
+                        }`}
+                      >
+                        <span className={styles.summaryDesktopText}>{item.displayLabel}</span>
+                        <span className={styles.summaryMobileLabel}>{item.label}</span>
+                        <span className={styles.summaryMobileValue}>{item.value}</span>
+                      </span>
                     )}
                     {index < summaryItems.length - 1 ? (
                       <span className={styles.summaryDivider}>|</span>
