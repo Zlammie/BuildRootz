@@ -7,7 +7,7 @@
   background:
     radial-gradient(circle at top, rgba(191, 212, 201, 0.34), transparent 34%),
     linear-gradient(180deg, #f7f3ec 0%, var(--page-bg) 26%);
-  padding: 0 0 96px;
+  padding: 0 0 var(--mobile-page-bottom-padding);
 }
 
 .layout {
@@ -15,7 +15,7 @@
   margin: 0 auto;
   display: grid;
   gap: 28px;
-  padding: 40px 24px 88px;
+  padding: 40px 24px var(--mobile-page-bottom-padding);
 }
 
 .hero {
@@ -302,14 +302,30 @@
 
 @media (max-width: 640px) {
   .layout {
-    padding: 28px 16px 72px;
+    padding: 18px 12px var(--mobile-page-bottom-padding);
     gap: 20px;
   }
 
   .hero,
   .card,
   .storyMini {
-    padding: 20px;
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .title {
+    font-size: 34px;
+    line-height: 1.05;
+    letter-spacing: 0;
+  }
+
+  .heroLead {
+    font-size: 17px;
+  }
+
+  .featureRow {
+    gap: 8px;
+    padding: 14px 0;
   }
 
   .iconBadge {

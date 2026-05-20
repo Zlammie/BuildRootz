@@ -148,6 +148,22 @@
 
 @media (max-width: 420px) {
   .actions {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .previewBtn,
+  .secondaryBtn {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .queueRow {
+    justify-content: stretch;
+  }
+
+  .queueBtn {
+    width: 100%;
+    min-height: 38px;
   }
 }

@@ -605,7 +605,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 50;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -791,12 +791,132 @@
 }
 
 @media (max-width: 640px) {
+  .header {
+    padding: 14px;
+    display: grid;
+    align-items: start;
+  }
+
+  .headerTitle {
+    font-size: 24px;
+  }
+
+  .headerSub {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .headerActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .card,
+  .builderCard,
+  .detailCard {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .topGrid,
+  .overviewSupportGrid,
+  .feesCompactGrid,
+  .schoolGrid,
+  .detailsGrid,
+  .inventoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapBox {
+    min-height: 230px;
+  }
+
   .secondaryMetricsGrid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .primaryMetricsGrid {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .overviewStat,
+  .overviewStatPrimary {
+    min-height: 0;
+    padding: 11px 12px;
+    text-align: left;
+    place-items: start;
+  }
+
+  .overviewStatPrimary .statValue,
+  .statValue {
+    font-size: 17px;
+    letter-spacing: 0;
+  }
+
+  .sectionHeaderRow {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .sectionHeader {
+    font-size: 21px;
+  }
+
+  .sectionControls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sectionControlBtn {
+    min-height: 40px;
+  }
+
+  .builderHeaderRow {
+    display: grid;
+    gap: 10px;
+  }
+
+  .builderTitleRow {
+    align-items: flex-start;
+  }
+
+  .builderName {
+    font-size: 17px;
+    line-height: 1.25;
+  }
+
+  .builderMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .builderBrowserPanel {
+    padding: 8px;
+  }
+
+  .builderTabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tabBtn {
+    min-height: 40px;
+  }
+
+  .previewModalBackdrop {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .previewModal {
+    max-height: calc(100svh - var(--mobile-bottom-nav-space) - 24px);
+  }
+
+  .previewFrame {
+    min-height: 58vh;
   }
 }
 

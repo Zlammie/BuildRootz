@@ -537,16 +537,16 @@ export default function CommunityComparisonSection({ builders }: Props) {
                   <tbody>
                     {filteredHomes.map((row) => (
                       <tr key={row.id}>
-                        <td>{row.address}</td>
-                        <td>{row.builderName}</td>
-                        <td>{row.planName}</td>
-                        <td>{formatNumber(row.beds)}</td>
-                        <td>{formatNumber(row.baths)}</td>
-                        <td>{row.sqft !== null ? `${row.sqft.toLocaleString()} sqft` : "\u2014"}</td>
-                        <td>{formatCurrency(row.price)}</td>
-                        <td>{row.status || "\u2014"}</td>
-                        <td>{row.moveInDate ? new Date(row.moveInDate).toLocaleDateString() : "\u2014"}</td>
-                        <td>
+                        <td data-label="Address">{row.address}</td>
+                        <td data-label="Builder">{row.builderName}</td>
+                        <td data-label="Plan">{row.planName}</td>
+                        <td data-label="Beds">{formatNumber(row.beds)}</td>
+                        <td data-label="Baths">{formatNumber(row.baths)}</td>
+                        <td data-label="Sqft">{row.sqft !== null ? `${row.sqft.toLocaleString()} sqft` : "\u2014"}</td>
+                        <td data-label="Price">{formatCurrency(row.price)}</td>
+                        <td data-label="Status">{row.status || "\u2014"}</td>
+                        <td data-label="Move-in">{row.moveInDate ? new Date(row.moveInDate).toLocaleDateString() : "\u2014"}</td>
+                        <td data-label="Actions">
                           {row.listingUrl ? (
                             <Link href={row.listingUrl} className={styles.actionLink}>View listing</Link>
                           ) : (
@@ -653,16 +653,16 @@ export default function CommunityComparisonSection({ builders }: Props) {
                       const canPreview = Boolean(row.previewUrl || row.fileUrl);
                       return (
                         <tr key={`${row.builderId}-${row.id}`}>
-                          <td>{row.planName}</td>
-                          <td>{row.builderName}</td>
-                          <td>{formatNumber(row.beds)}</td>
-                          <td>{formatNumber(row.baths)}</td>
-                          <td>{row.sqft !== null ? `${row.sqft.toLocaleString()} sqft` : "\u2014"}</td>
-                          <td>{row.garageCount !== null ? `${row.garageCount} car` : "\u2014"}</td>
-                          <td>{row.stories !== null ? `${row.stories} ${row.stories === 1 ? "story" : "stories"}` : "\u2014"}</td>
-                          <td>{row.startingPrice !== null ? `From ${formatCurrency(row.startingPrice)}` : "From \u2014"}</td>
-                          <td>{row.homesCount.toLocaleString()}</td>
-                          <td>
+                          <td data-label="Plan">{row.planName}</td>
+                          <td data-label="Builder">{row.builderName}</td>
+                          <td data-label="Beds">{formatNumber(row.beds)}</td>
+                          <td data-label="Baths">{formatNumber(row.baths)}</td>
+                          <td data-label="Sqft">{row.sqft !== null ? `${row.sqft.toLocaleString()} sqft` : "\u2014"}</td>
+                          <td data-label="Garage">{row.garageCount !== null ? `${row.garageCount} car` : "\u2014"}</td>
+                          <td data-label="Stories">{row.stories !== null ? `${row.stories} ${row.stories === 1 ? "story" : "stories"}` : "\u2014"}</td>
+                          <td data-label="Starting price">{row.startingPrice !== null ? `From ${formatCurrency(row.startingPrice)}` : "From \u2014"}</td>
+                          <td data-label="Homes">{row.homesCount.toLocaleString()}</td>
+                          <td data-label="Actions">
                             <div className={styles.actionsCell}>
                               <button
                                 type="button"

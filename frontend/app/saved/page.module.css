@@ -7,7 +7,7 @@
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 18px 20px 80px;
+  padding: 18px 20px var(--mobile-page-bottom-padding);
 }
 
 .header {
@@ -254,5 +254,89 @@
 
   .counts {
     width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 14px 12px var(--mobile-page-bottom-padding);
+  }
+
+  .header {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    margin: 0;
+    font-size: 26px;
+    line-height: 1.15;
+  }
+
+  .subhead {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .counts,
+  .tabs,
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .countBadge,
+  .tabButton,
+  .card {
+    width: 100%;
+  }
+
+  .tabButton {
+    min-height: 44px;
+    justify-content: space-between;
+  }
+
+  .card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .sectionHeader {
+    align-items: flex-start;
+  }
+
+  .listItem {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .savedCard {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .savedCard:not(:has(.savedMedia)) {
+    grid-template-columns: 1fr;
+  }
+
+  .savedMedia {
+    width: 96px;
+    min-height: 78px;
+  }
+
+  .listTitle {
+    line-height: 1.25;
+  }
+
+  .secondary {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .empty,
+  .loading {
+    line-height: 1.5;
   }
 }

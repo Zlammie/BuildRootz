@@ -1,4 +1,3 @@
-﻿/* eslint-disable react/jsx-no-bind */
 "use client";
 
 import Link from "next/link";

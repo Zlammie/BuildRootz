@@ -484,3 +484,79 @@
     min-height: 150px;
   }
 }
+
+@media (max-width: 640px) {
+  .media {
+    height: auto;
+    aspect-ratio: 16 / 10;
+    min-height: 180px;
+  }
+
+  .compact .media {
+    height: auto;
+    min-height: 170px;
+  }
+
+  .body {
+    padding: 13px 13px 14px;
+    gap: 8px;
+  }
+
+  .titleRow {
+    display: grid;
+    gap: 6px;
+    align-items: start;
+  }
+
+  .title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 19px;
+  }
+
+  .compact .title {
+    font-size: 18px;
+  }
+
+  .inlineBadges {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .price,
+  .compact .price {
+    font-size: 23px;
+  }
+
+  .communityLink,
+  .communityText,
+  .location {
+    font-size: 14px;
+  }
+
+  .specsRow {
+    margin: 6px 0;
+    font-size: 14px;
+  }
+
+  .identityRow,
+  .footerRow {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 0 13px 14px;
+  }
+
+  .queueBtn {
+    min-height: 36px;
+    padding: 7px 12px;
+  }
+
+  .statusOverlay {
+    max-width: calc(100% - 72px);
+    white-space: normal;
+  }
+}

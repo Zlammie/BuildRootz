@@ -279,7 +279,7 @@ export default function SavedPage() {
               </div>
               {savedSearches.length === 0 ? (
                 <p className={styles.empty}>
-                  No saved searches yet. Set filters on the browse page and tap "Save search".
+                  No saved searches yet. Set filters on the browse page and tap &quot;Save search&quot;.
                 </p>
               ) : (
                 <ul className={styles.list}>

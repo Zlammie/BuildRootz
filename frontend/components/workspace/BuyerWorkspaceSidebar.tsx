@@ -522,14 +522,32 @@ export default function BuyerWorkspaceSidebar({
     });
   }, [adapterKey, workspaceAdapter]);
 
+  useEffect(() => {
+    if (!isExpanded) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsExpanded(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isExpanded]);
+
   return (
-    <aside
-      className={classNames(
-        styles.sidebar,
-        isExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed,
-      )}
-    >
-      <div className={styles.stickyShell}>
+    <>
+      {isExpanded ? (
+        <button
+          type="button"
+          className={styles.mobileBackdrop}
+          onClick={() => setIsExpanded(false)}
+          aria-label="Close workspace"
+        />
+      ) : null}
+      <aside
+        className={classNames(
+          styles.sidebar,
+          isExpanded ? styles.sidebarExpanded : styles.sidebarCollapsed,
+        )}
+      >
+        <div className={styles.stickyShell}>
         {!isExpanded ? (
           <div className={styles.rail}>
             <button
@@ -821,7 +839,8 @@ export default function BuyerWorkspaceSidebar({
             </div>
           </div>
         )}
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }

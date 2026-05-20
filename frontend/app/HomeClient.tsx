@@ -107,6 +107,7 @@ type SplitViewportStyle = CSSProperties & {
 const VIEW_MODE_STORAGE_KEY = "brz:viewMode";
 const MAP_LAYER_STORAGE_KEY = "brz:mapLayerMode";
 const MAP_BOUNDS_EPSILON = 0.0008;
+const MOBILE_VIEW_BREAKPOINT_PX = 640;
 const SPLIT_STACK_BREAKPOINT_PX = 1024;
 const SPLIT_VIEWPORT_BOTTOM_GAP_PX = 16;
 const SPLIT_MIN_HEIGHT_PX = 440;
@@ -399,19 +400,35 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
     }
 
     if (typeof window !== "undefined") {
+      const isMobileViewport = window.innerWidth <= MOBILE_VIEW_BREAKPOINT_PX;
       const fromStorage = normalizeViewMode(
         window.localStorage.getItem(VIEW_MODE_STORAGE_KEY),
       );
       if (fromStorage) {
-        setViewMode(fromStorage);
+        setViewMode(isMobileViewport && fromStorage === "split" ? "list" : fromStorage);
       } else {
-        setViewMode("split");
+        setViewMode(isMobileViewport ? "list" : "split");
       }
     } else {
       setViewMode("split");
     }
     setViewModeReady(true);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!viewModeReady || typeof window === "undefined") return undefined;
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_VIEW_BREAKPOINT_PX}px)`);
+    const syncMobileViewMode = () => {
+      const queryMode = normalizeViewMode(getCurrentQueryParam(searchParams, "view"));
+      if (mediaQuery.matches && viewMode === "split" && queryMode !== "split") {
+        setViewMode("list");
+      }
+    };
+
+    syncMobileViewMode();
+    mediaQuery.addEventListener("change", syncMobileViewMode);
+    return () => mediaQuery.removeEventListener("change", syncMobileViewMode);
+  }, [searchParams, viewMode, viewModeReady]);
 
   useEffect(() => {
     if (!viewModeReady || typeof window === "undefined") return;
@@ -940,7 +957,9 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
               <div className={styles.viewModeToggle} role="group" aria-label="Results view">
                 <button
                   type="button"
-                  className={`${styles.viewModeBtn} ${viewMode === "split" ? styles.viewModeBtnActive : ""}`}
+                  className={`${styles.viewModeBtn} ${styles.viewModeSplitBtn} ${
+                    viewMode === "split" ? styles.viewModeBtnActive : ""
+                  }`}
                   onClick={() => setViewMode("split")}
                   aria-pressed={viewMode === "split"}
                 >
@@ -952,7 +971,7 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
                   onClick={() => setViewMode("list")}
                   aria-pressed={viewMode === "list"}
                 >
-                  List
+                  View Listings
                 </button>
                 <button
                   type="button"
@@ -960,14 +979,33 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
                   onClick={() => setViewMode("map")}
                   aria-pressed={viewMode === "map"}
                 >
-                  Map
+                  View Map
                 </button>
               </div>
+              <button
+                type="button"
+                className={styles.mobileViewModeBtn}
+                onClick={() => setViewMode(viewMode === "map" ? "list" : "map")}
+              >
+                {viewMode === "map" ? "View Listings" : "View Map"}
+              </button>
             </div>
           </div>
 
           {openFilter && (
             <div className={styles.filterPanel}>
+              <div className={styles.mobileFilterSheetHeader}>
+                <strong>
+                  {openFilter === "price"
+                    ? "Price"
+                    : openFilter === "bedbath"
+                      ? "Beds / Baths"
+                      : "Move-in"}
+                </strong>
+                <button type="button" className={styles.mobileFilterDone} onClick={() => setOpenFilter(null)}>
+                  Done
+                </button>
+              </div>
               {openFilter === "price" && (
                 <div className={styles.pricePanel}>
                   <div className={styles.filterPanelHeader}>
@@ -1254,9 +1292,14 @@ export default function HomeClient({ initialHomes, dataError }: Props) {
           {viewMode === "map" && (
             <div className={styles.mapOnlyPanel}>
               <div className={styles.mapModePanel}>
-                <p className={styles.mapModeMeta}>
-                  Showing {mapCounts.mappable} homes on map ({mapCounts.missing} missing location)
-                </p>
+                <div className={styles.mapModeHeader}>
+                  <p className={styles.mapModeMeta}>
+                    Showing {mapCounts.mappable} homes on map ({mapCounts.missing} missing location)
+                  </p>
+                  <button type="button" className={styles.mapModeBackBtn} onClick={() => setViewMode("list")}>
+                    View Listings
+                  </button>
+                </div>
                 <p className={styles.mapModeHint}>
                   Hover a pin for quick details. Click a pin to open the listing.
                 </p>

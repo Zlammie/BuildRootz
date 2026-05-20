@@ -29,6 +29,26 @@
   --primary: var(--rootz-green);
   --primary-strong: #4d6848;
   --shadow: 0 24px 60px rgba(46, 46, 44, 0.1);
+
+  /*
+   * Responsive/chrome foundation.
+   * CSS custom properties cannot drive media query conditions, so the named
+   * breakpoint values below document the app contract while media queries use
+   * the same literal thresholds.
+   */
+  --breakpoint-mobile-max: 640px;
+  --breakpoint-tablet-max: 900px;
+  --breakpoint-wide-min: 1201px;
+  --z-sticky-nav: 10;
+  --z-workspace-rail: 32;
+  --z-mobile-bottom-nav: 30;
+  --z-mobile-bottom-panel: 40;
+  --z-modal: 50;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-nav-height: 68px;
+  --mobile-bottom-nav-space: 0px;
+  --mobile-bottom-action-space: 0px;
+  --mobile-page-bottom-padding: 72px;
 }
 
 *,
@@ -46,6 +66,7 @@ body {
     system-ui, sans-serif;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  scroll-padding-bottom: var(--mobile-page-bottom-padding);
 }
 
 a {
@@ -64,4 +85,11 @@ img {
   border: 2px solid #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
   border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --mobile-bottom-nav-space: calc(var(--mobile-nav-height) + var(--safe-area-bottom));
+    --mobile-page-bottom-padding: calc(var(--mobile-bottom-nav-space) + 32px);
+  }
 }

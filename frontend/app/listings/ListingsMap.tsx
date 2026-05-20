@@ -105,6 +105,7 @@ const DENSE_GROUP_EXPAND_ZOOM = PRICE_BUBBLE_ZOOM_THRESHOLD + 1.25;
 const MAP_DEBUG_STORAGE_KEY = "brz:map-debug";
 const MAP_DEBUG_SAMPLE_SIZE = 3;
 const MAP_DEBUG_DRAG_LOG_INTERVAL_MS = 120;
+const MAP_CONTAINER_MIN_SIZE_PX = 24;
 
 type CoordinateDiagnostics = {
   missingCount: number;
@@ -357,6 +358,11 @@ function formatElementSize(element: Element | null): string {
   return `${Math.round(rect.width)}x${Math.round(rect.height)}`;
 }
 
+function hasUsableMapSize(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  return rect.width >= MAP_CONTAINER_MIN_SIZE_PX && rect.height >= MAP_CONTAINER_MIN_SIZE_PX;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -576,6 +582,7 @@ export default function ListingsMap({
   const [layersReady, setLayersReady] = useState(false);
   const [inventoryAutoRevealActive, setInventoryAutoRevealActive] = useState(false);
   const [showDebugBadge, setShowDebugBadge] = useState(false);
+  const [containerReadyTick, setContainerReadyTick] = useState(0);
   const [debugStatus, setDebugStatus] = useState<MapDebugStatus>({
     createCount: 0,
     removeCount: 0,
@@ -1006,6 +1013,36 @@ export default function ListingsMap({
   );
 
   useEffect(() => {
+    if (typeof window === "undefined" || mapRef.current) return undefined;
+    const container = mapContainerRef.current;
+    if (!container) return undefined;
+
+    const rafIds: number[] = [];
+    const markReady = () => {
+      if (mapRef.current || !hasUsableMapSize(container)) return;
+      setContainerReadyTick((tick) => tick + 1);
+    };
+    const requestReadyCheck = () => {
+      rafIds.push(window.requestAnimationFrame(markReady));
+    };
+
+    markReady();
+    requestReadyCheck();
+    rafIds.push(window.requestAnimationFrame(requestReadyCheck));
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(markReady);
+      observer.observe(container);
+    }
+
+    return () => {
+      rafIds.forEach((rafId) => window.cancelAnimationFrame(rafId));
+      observer?.disconnect();
+    };
+  }, [renderMode]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -1025,6 +1062,15 @@ export default function ListingsMap({
         mapExists: true,
       });
       captureDomSnapshot("map-create-reused-dom");
+      return;
+    }
+
+    if (!hasUsableMapSize(container)) {
+      debugLog("map-create-waiting-for-visible-container", {
+        renderMode,
+        layerMode,
+        containerSize: formatElementSize(container),
+      });
       return;
     }
 
@@ -1073,7 +1119,7 @@ export default function ListingsMap({
       });
       console.error("[ListingsMapDebug] map-create-error", error);
     }
-  }, [captureDomSnapshot, debugEnabled, debugLog, layerMode, renderMode]);
+  }, [captureDomSnapshot, containerReadyTick, debugEnabled, debugLog, layerMode, renderMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1168,6 +1214,12 @@ export default function ListingsMap({
     if (!map || !container || typeof window === "undefined") return;
 
     const resizeMap = () => {
+      if (!hasUsableMapSize(container)) {
+        debugLog("resize-skipped-unusable-container", {
+          containerSize: formatElementSize(container),
+        });
+        return;
+      }
       debugResizeCountRef.current += 1;
       if (debugEnabled) {
         setDebugStatus((prev) => ({
@@ -1184,7 +1236,16 @@ export default function ListingsMap({
     };
 
     resizeMap();
-    const raf = window.requestAnimationFrame(resizeMap);
+    const rafIds: number[] = [];
+    const timeoutIds: number[] = [];
+    const requestResize = () => {
+      rafIds.push(window.requestAnimationFrame(resizeMap));
+    };
+
+    requestResize();
+    rafIds.push(window.requestAnimationFrame(requestResize));
+    timeoutIds.push(window.setTimeout(resizeMap, 80));
+    timeoutIds.push(window.setTimeout(resizeMap, 240));
     let observer: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(() => {
@@ -1199,12 +1260,21 @@ export default function ListingsMap({
     map.once("load", resizeMap);
 
     return () => {
-      window.cancelAnimationFrame(raf);
+      rafIds.forEach((rafId) => window.cancelAnimationFrame(rafId));
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
       window.removeEventListener("resize", resizeMap);
       observer?.disconnect();
       map.off("load", resizeMap);
     };
-  }, [captureDomSnapshot, debugEnabled, debugLog]);
+  }, [
+    captureDomSnapshot,
+    communitiesWithGeo.length,
+    containerReadyTick,
+    debugEnabled,
+    debugLog,
+    homesWithGeo.length,
+    renderMode,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;

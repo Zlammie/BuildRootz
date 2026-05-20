@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
   background: var(--page-bg);
-  padding: 0 0 120px;
+  padding: 0 0 var(--mobile-page-bottom-padding);
 }
 
 .pageShell {
@@ -117,7 +117,7 @@
   font-weight: 800;
   color: var(--rootz-brown);
   line-height: 1;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .priceFallback {
@@ -915,21 +915,240 @@
   }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 640px) {
   .page {
-    padding-bottom: 168px;
+    --mobile-bottom-action-space: 78px;
+    padding-bottom: calc(var(--mobile-page-bottom-padding) + var(--mobile-bottom-action-space));
   }
 
   .pageShell {
-    padding-bottom: 24px;
+    padding: 14px 12px var(--mobile-page-bottom-padding);
+  }
+
+  .layout {
+    gap: 14px;
+  }
+
+  /*
+   * Mobile prioritizes the photo decision point first without changing the
+   * desktop DOM or route data flow.
+   */
+  .hero {
+    order: 1;
+    border-radius: 12px;
+  }
+
+  .headerRow {
+    order: 2;
+    display: grid;
+    gap: 12px;
+  }
+
+  .bodyGrid {
+    order: 3;
+    gap: 12px;
+  }
+
+  .layout > .panel {
+    order: 4;
   }
 
   .heroGrid {
+    display: block;
     min-height: 0;
   }
 
+  .gallery {
+    border-right: 0;
+  }
+
   .galleryImage {
-    min-height: 280px;
+    min-height: clamp(220px, 58vw, 300px);
+  }
+
+  .galleryControls {
+    padding: 0 10px;
+  }
+
+  .galleryArrow {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  .galleryBadge {
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .floorPlan {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .floorPlanImage {
+    min-height: 160px;
+  }
+
+  .floorPlanLink {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .metaBar {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .summaryText {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .summaryText > span,
+  .summaryLink {
+    min-height: 30px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(196, 186, 174, 0.8);
+    border-radius: 999px;
+    background: #fff;
+    padding: 5px 9px;
+  }
+
+  .summaryDivider {
+    display: none;
+  }
+
+  .headerCopy {
+    gap: 7px;
+  }
+
+  .titleRow {
+    display: grid;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .title {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .badges {
+    justify-content: flex-start;
+  }
+
+  .communityLocationRow {
+    display: grid;
+    align-items: start;
+    gap: 4px;
+  }
+
+  .communityLink,
+  .communityText {
+    font-size: 16px;
+  }
+
+  .locationSep {
+    display: none;
+  }
+
+  .address {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .headerActions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 10px;
+  }
+
+  .price {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+
+  .headerActions .queueAction {
+    width: 100%;
+  }
+
+  .headerActions .saveAction {
+    display: none;
+  }
+
+  .panel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .panel h3 {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .panel p,
+  .list {
+    line-height: 1.55;
+  }
+
+  .sectionHeader,
+  .relatedHeader,
+  .feesHeader {
+    gap: 8px;
+  }
+
+  .ctaRow {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ctaPrimary,
+  .ctaGhost {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .contactHero {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .contactBrandMark {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+
+  .contactCard {
+    gap: 10px;
+  }
+
+  .contactRow {
+    gap: 10px;
+  }
+
+  .communityGrid,
+  .feesColumns,
+  .relatedGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .feesColumn {
+    gap: 14px;
+  }
+
+  .feesMetricSpacer {
+    min-height: 0;
+  }
+
+  .mapBox {
+    height: 220px;
   }
 
   .mobileCtaBar {
@@ -937,9 +1156,9 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
-    z-index: 40;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    bottom: var(--mobile-bottom-nav-space);
+    z-index: var(--z-mobile-bottom-panel);
+    padding: 12px 16px;
     background: rgba(249, 247, 242, 0.96);
     border-top: 1px solid rgba(196, 186, 174, 0.9);
     backdrop-filter: blur(12px);
@@ -956,10 +1175,15 @@
 
   .mobileCtaInner .ctaPrimary {
     width: 100%;
+    min-height: 48px;
   }
 
   .mobileCtaInner .saveAction {
-    min-width: 116px;
+    min-width: 108px;
     justify-content: center;
+  }
+
+  .mobileCtaInner .saveText {
+    font-size: 12px;
   }
 }

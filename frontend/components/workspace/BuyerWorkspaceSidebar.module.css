@@ -4,7 +4,11 @@
   transition: width 220ms ease;
   flex: 0 0 auto;
   align-self: start;
-  z-index: 12;
+  z-index: var(--z-workspace-rail);
+}
+
+.mobileBackdrop {
+  display: none;
 }
 
 .sidebarCollapsed {
@@ -615,6 +619,223 @@
 
 @media (max-width: 1200px) {
   .sidebar {
+    position: fixed;
+    top: auto;
+    right: 16px;
+    bottom: calc(var(--mobile-bottom-nav-space) + var(--mobile-bottom-action-space) + 16px);
+    align-self: auto;
+    z-index: var(--z-workspace-rail);
+  }
+
+  .sidebarCollapsed {
+    width: 60px;
+  }
+
+  .sidebarExpanded {
+    width: min(380px, calc(100vw - 32px));
+  }
+
+  /*
+   * Mobile/tablet foundation: keep the existing workspace rail reachable as a
+   * floating entry point, and reuse the current panel as a constrained drawer.
+   */
+  .sidebarCollapsed .stickyShell {
+    width: 60px;
+    height: 60px;
+    max-height: none;
+  }
+
+  .sidebarExpanded .stickyShell {
+    height: min(720px, max(320px, calc(100svh - var(--mobile-bottom-nav-space) - var(--mobile-bottom-action-space) - 48px)));
+    max-height: max(320px, calc(100svh - var(--mobile-bottom-nav-space) - var(--mobile-bottom-action-space) - 48px));
+  }
+
+  .rail,
+  .panel {
+    border-radius: 16px;
+  }
+
+  .railBtn {
+    padding: 10px;
+  }
+
+  .railLabel {
     display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(46, 46, 44, 0.28);
+    z-index: var(--z-mobile-bottom-panel);
+    cursor: pointer;
+  }
+
+  .sidebar {
+    right: 10px;
+    bottom: calc(var(--mobile-bottom-nav-space) + var(--mobile-bottom-action-space) + 10px);
+  }
+
+  .sidebarCollapsed {
+    width: auto;
+    z-index: var(--z-mobile-bottom-panel);
+  }
+
+  .sidebarCollapsed .stickyShell {
+    width: auto;
+    height: 48px;
+    max-height: none;
+  }
+
+  .sidebarExpanded {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    z-index: var(--z-modal);
+  }
+
+  .sidebarExpanded .stickyShell {
+    height: min(620px, max(300px, calc(100svh - var(--mobile-bottom-nav-space) - var(--mobile-bottom-action-space) - 32px)));
+    max-height: max(300px, calc(100svh - var(--mobile-bottom-nav-space) - var(--mobile-bottom-action-space) - 32px));
+  }
+
+  .railBtn {
+    width: auto;
+    height: 48px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 14px 0 10px;
+    border: 1px solid rgba(196, 186, 174, 0.9);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 28px rgba(46, 46, 44, 0.18);
+    backdrop-filter: blur(12px);
+    white-space: nowrap;
+  }
+
+  .rail {
+    width: auto;
+    min-height: 0;
+    height: 48px;
+    overflow: visible;
+    border-radius: 999px;
+  }
+
+  .railIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--rootz-green-soft);
+    color: var(--text);
+  }
+
+  .railTop {
+    display: inline-grid;
+  }
+
+  .railLabel {
+    display: inline;
+    writing-mode: horizontal-tb;
+    transform: none;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .panel {
+    border-radius: 14px;
+  }
+
+  .header {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .title {
+    font-size: 17px;
+  }
+
+  .headerIntro,
+  .contextTitle,
+  .contextMeta,
+  .contextSummary {
+    line-height: 1.4;
+  }
+
+  .nav {
+    padding: 8px 10px;
+  }
+
+  .navBtn {
+    min-height: 36px;
+    padding: 7px 10px;
+  }
+
+  .content {
+    padding: 12px;
+  }
+
+  .importActions,
+  .upgradeActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .primaryBtn,
+  .secondaryBtn,
+  .upgradePrimaryLink,
+  .upgradeSecondaryLink {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .textarea {
+    min-height: 96px;
+    font-size: 16px;
+  }
+
+  .queueItem,
+  .noteItem,
+  .decisionGroup {
+    padding: 11px;
+  }
+
+  .noteRow {
+    display: grid;
+    gap: 6px;
+  }
+
+  .inlineBtn {
+    min-height: 32px;
+    width: fit-content;
+  }
+
+  .labelChip {
+    min-height: 36px;
+  }
+
+  .sentimentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sentimentBtn,
+  .checkRow {
+    min-height: 40px;
+  }
+
+  .stars {
+    justify-content: space-between;
+  }
+
+  .starBtn {
+    width: 40px;
+    height: 40px;
   }
 }

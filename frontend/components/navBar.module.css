@@ -26,7 +26,7 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-sticky-nav);
 }
 
 .brand {
@@ -145,9 +145,24 @@
 
 .navLinkMobile {
   display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 700;
   color: var(--text);
   text-decoration: none;
+}
+
+.mobileCount {
+  min-width: 18px;
+  height: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--rootz-sand);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .savedLink {
@@ -201,7 +216,7 @@
   font-weight: 700;
 }
 
-@media (max-width: 639px) {
+@media (max-width: 640px) {
   .alphaBannerInner {
     padding: 8px 16px;
     font-size: 12px;
@@ -210,16 +225,21 @@
   .nav {
     position: fixed;
     bottom: 0;
+    left: 0;
+    right: 0;
     top: auto;
     margin: 0;
-    padding: 12px 16px;
+    min-height: var(--mobile-nav-height);
+    padding: 10px 16px calc(10px + var(--safe-area-bottom));
     border-bottom: none;
     border-top: 1px solid var(--border);
     box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
     border-radius: 0;
+    z-index: var(--z-mobile-bottom-nav);
   }
 
   .brand {
+    display: none;
     padding-left: 0;
   }
 
@@ -235,6 +255,6 @@
     display: flex;
     justify-content: space-between;
     width: 100%;
-    gap: 12px;
+    gap: 8px;
   }
 }

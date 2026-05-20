@@ -140,6 +140,12 @@ export default function NavBar() {
           <Link className={styles.navLinkMobile} href="/#map">
             Map
           </Link>
+          <Link className={styles.navLinkMobile} href="/workspace">
+            <span>Workspace</span>
+            {workspaceQueueCount > 0 ? (
+              <span className={styles.mobileCount}>{workspaceQueueCount}</span>
+            ) : null}
+          </Link>
           <Link className={styles.navLinkMobile} href="/saved">
             Saved
           </Link>

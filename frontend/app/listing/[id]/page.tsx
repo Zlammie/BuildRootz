@@ -935,7 +935,6 @@ export default async function ListingPage({
           lng: community.location.lng,
         }
       : null;
-  const hasMap = Boolean(listingMapLocation);
   const relatedHomes = communityHomes
     .filter((home) => home.id !== listing.id)
     .slice(0, 6);

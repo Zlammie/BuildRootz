@@ -194,7 +194,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 50;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,5 +261,116 @@
 @media (max-width: 900px) {
   .table {
     min-width: 760px;
+  }
+}
+
+@media (max-width: 640px) {
+  .headerRow {
+    display: grid;
+    align-items: stretch;
+  }
+
+  .header {
+    font-size: 21px;
+  }
+
+  .tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tabBtn {
+    min-height: 42px;
+  }
+
+  .card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .filterField input,
+  .filterField select {
+    min-height: 42px;
+  }
+
+  .tableWrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .table tbody tr {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px;
+  }
+
+  .table tbody td {
+    border: 0;
+    padding: 7px 0;
+    display: grid;
+    grid-template-columns: minmax(88px, 0.4fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    font-size: 13px;
+  }
+
+  .table tbody td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .actionsCell {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .actionBtn,
+  .secondaryBtn {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .previewModalBackdrop {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .previewModal {
+    max-height: calc(100svh - var(--mobile-bottom-nav-space) - 24px);
+  }
+
+  .previewFrame {
+    min-height: 58vh;
   }
 }
